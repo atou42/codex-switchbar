@@ -35,12 +35,29 @@ private struct SwitchMenuLabel: View {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     lazy var model = AppModel()
     var makeSettingsWindow: (() -> NSWindow)?
+    var enableControl = true
+    private var controlServer: LocalControlServer?
     private var settingsWindow: NSWindow?
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         // Prevent SIGPIPE from terminating the menu app if a helper exits early.
         signal(SIGPIPE, SIG_IGN)
-        showSettings()
+        if !CommandLine.arguments.contains("--background") { showSettings() }
+        if enableControl {
+            do {
+                let path = model.root.appendingPathComponent("control.sock").path
+                controlServer = try LocalControlServer(path: path) { data in
+                    let response: ControlResponse = DispatchQueue.main.sync {
+                        do { return self.control(try JSONDecoder().decode(ControlCommand.self, from: data)) }
+                        catch { return ControlResponse(ok: false, state: "error", message: "无效的终端请求。") }
+                    }
+                    // This response contains only JSON-safe strings, dates and finite usage values.
+                    do { return try JSONEncoder().encode(response) }
+                    catch { return Data(#"{"ok":false,"state":"error","message":"无法编码结果。","accounts":[]}"#.utf8) }
+                }
+                controlServer?.start()
+            } catch { model.show(error) }
+        }
     }
     func showSettings() {
         if settingsWindow == nil {
@@ -73,6 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.setActivationPolicy(.accessory)
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    func applicationWillTerminate(_ notification: Notification) { controlServer?.stop() }
 }
 #else
 import Foundation

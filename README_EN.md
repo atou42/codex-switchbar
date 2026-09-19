@@ -81,3 +81,11 @@ bash Scripts/publish.sh
 This scans source, creates a **new public** `atou42/codex-switchbar`, and pushes an initial commit. Existing repositories and Git history are refused. The workflow then performs Mac testing and packaging; it does not deploy or publish a Release. Never paste credentials into chat, issues, or the repository.
 
 Independently implemented. UI inspiration and official references are listed in [REFERENCES](docs/REFERENCES.md). Not affiliated with OpenAI.
+
+## Terminal control
+
+The installer adds `~/.local/bin/codex-switch`; include that directory in PATH. Commands: `start`, `stop`, `list`, `setup`, `save "Personal"`, `add "Work"`, `switch "Work"`, `status`, `cancel`, `usage`, `rename "Work" "Office"`, and `remove "Office"`. Add `--json` for structured output, or run `--help`.
+
+Commands control the same menu-bar app and account store. Account commands launch it in the background if needed; `start` opens settings. `stop` and `status` do not launch a stopped app. Login and switching can be asynchronous: `login_pending`, `switch_queued`, and `working` are pending states, not completion. Use `status` to check the eventual result and active account. Immediate errors return a nonzero exit code. Adding requires Codex clients to be closed. Duplicate names require an exact account ID from `list`. Credentials are never returned.
+
+The owner-only local socket checks both peers' user IDs. An occupied socket path is never automatically deleted, even after a crash; investigate the existing instance/state first.

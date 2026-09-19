@@ -66,6 +66,33 @@ bash Scripts/build-app.sh --universal
 
 邮箱默认遮挡。界面语言默认跟随系统，可切换中文 / English。菜单栏的百分比可以关闭。
 
+## 终端操作
+
+安装脚本会把 `codex-switch` 放进 `~/.local/bin`。若找不到命令，将该目录加入 PATH，或运行 `~/.local/bin/codex-switch`。
+
+```sh
+codex-switch start                   # 打开窗口
+codex-switch stop                    # 退出本工具，不关闭你的 Codex
+codex-switch list                    # 查看账号；* 表示当前账号
+codex-switch setup                   # 首次设置：备份配置并启用文件登录
+codex-switch save "个人"             # 保存当前登录
+codex-switch add "工作"              # 打开官方页面添加另一个账号
+codex-switch switch "工作"           # 切换账号
+codex-switch status                  # 查看进度、错误和当前账号
+codex-switch cancel                  # 取消登录或等待中的切换
+codex-switch usage                   # 请求刷新用量，保留原刷新频率限制
+codex-switch rename "工作" "工作号"
+codex-switch remove "工作号"         # 仅移除保存副本，不注销登录
+codex-switch list --json             # 供脚本读取
+codex-switch --help
+```
+
+终端控制同一个菜单栏应用，未运行时自动在后台启动；`start` 才主动打开窗口。`status` 和 `stop` 在已退出时不会重新启动。账号操作共用界面中的配置、钥匙串和等待状态。
+
+`login_pending` 表示等待官方页面登录；`switch_queued` 表示等待 Codex 客户端退出，最多五分钟；`working` 表示操作进行中。这些不是完成通知，请用 `status` 检查后续结果与当前账号。立即失败返回非零退出码；`--json` 返回 `ok: false`。添加前需退出 Codex 客户端。同名账号必须用 `list` 中的完整 ID。命令不会输出登录凭证。
+
+本机控制通道只接受当前 macOS 用户，位于私有应用数据目录。异常终止后如果残留 `control.sock`，应用会报错而不是自动清理或覆盖；先确认没有其他实例，并保留现场排查。
+
 ## 用量的含义
 
 `100 − usedPercent` 才是剩余额度。窗口长度和重置 Unix 时间取自官方 App Server，不假设所有账号都是 5 小时 / 7 天。到达重置时间后显示「待刷新」，**不会自行把额度变成 100%**。

@@ -6,11 +6,13 @@ let package = Package(
     platforms: [.macOS(.v13)],
     products: [
         .library(name: "SwitchCore", targets: ["SwitchCore"]),
-        .executable(name: "CodexSwitchbar", targets: ["CodexSwitchbar"])
+        .executable(name: "CodexSwitchbar", targets: ["CodexSwitchbar"]),
+        .executable(name: "codex-switch", targets: ["CodexSwitchCLI"])
     ],
     targets: [
         .target(name: "SwitchCore"),
         .executableTarget(name: "CodexSwitchbar", dependencies: ["SwitchCore"]),
+        .executableTarget(name: "CodexSwitchCLI", dependencies: ["SwitchCore"]),
         .testTarget(name: "SwitchCoreTests", dependencies: ["SwitchCore"]),
         .testTarget(name: "AppLifecycleTests", dependencies: ["CodexSwitchbar"])
     ]

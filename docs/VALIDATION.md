@@ -72,3 +72,7 @@ Use an ordinary self-owned account and inspect the source first. Never put test 
 - [ ] Interrupt a operation in a controlled disposable test environment. Verify journal recovery reconciles the live login and never blindly restores a stale blob. Do not perform destructive crash experiments on irreplaceable credentials.
 - [ ] Test custom official CLI paths (including nvm), supported shared-home selection, launch-at-login approval, logout/relogin and sleep/wake. Confirm the app starts no unintended user model turn.
 - [ ] After creating the new repository yourself, confirm public contents contain only source/preview/synthetic tests and inspect the actual macOS Actions result.
+
+## CLI follow-up — 2026-09-19
+
+All 60 tests passed, including 5 local-transport checks and 3 command/selector/response checks. Rebuilt and installed both app and CLI; signature verification passed. On the installed app, exercised list, status, stop, automatic background launch through list, and start. Unknown account switch/remove requests returned nonzero failure without changing the live credential bytes. Confirmed the start command opened the real settings window. No real account addition or A → B → A switch was performed; those remain pending. Account operations are routed through the existing app model, and asynchronous operations return pending states.

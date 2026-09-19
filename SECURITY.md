@@ -23,7 +23,7 @@ The source publication script requires a fresh Git directory and a specific auth
 
 ## Network boundary
 
-Codex Switch itself has no custom HTTP client, listener, proxy, or telemetry. It communicates through pipes with your installed official `codex app-server`. That child can access OpenAI for login and usage, may perform its normal official token refresh, and can start the official OAuth loopback callback. Shared Codex configuration may also affect what its startup does. This is not an offline-only application and not a guarantee that the official process never initializes any other configured subsystem.
+Codex Switch itself has no custom HTTP client, network listener, proxy, or telemetry. It communicates through pipes with your installed official `codex app-server`. That child can access OpenAI for login and usage, may perform its normal official token refresh, and can start the official OAuth loopback callback. Shared Codex configuration may also affect what its startup does. This is not an offline-only application and not a guarantee that the official process never initializes any other configured subsystem.
 
 Only authentication/account/usage RPCs are sent. No thread/turn/tool requests, generated model work, external-token injection, quota-reset redemption, browser-cookie reads, custom refresh endpoints, or arbitrary proxy URLs. Server-initiated RPC requests are rejected. OAuth browser URLs are restricted to an explicit HTTPS official-host allowlist with no username/password/port. Responses are size-limited and timeouts/cancellation terminate only the helper this app launched, never an existing user Codex process.
 
@@ -34,3 +34,7 @@ Usage is queried only for the currently saved live account and only through offi
 Use Settings → Reconcile & recover for an interrupted operation. If identity cannot be established, inspect the real official login rather than restoring random backups. Clearing the operation marker does not restore or delete credentials. Forgetting a saved account is not logout.
 
 Do not post `auth.json`, Keychain exports, OAuth callback URLs, full JWTs, account indexes, or terminal logs containing credentials to public issues. For a bug report, use a synthetic fixture and share only a minimal redacted reproduction, platform/tool versions, and sanitized error text. If a credential has leaked, revoke it through the provider's current security controls rather than relying on this application to secure an already exposed token.
+
+## Local terminal control
+
+The CLI connects to an owner-only Unix-domain socket in the private application-support directory. Both peers verify the macOS user ID. Messages are limited to 1 MiB and transport waits are bounded. Requests contain actions and account labels/IDs, never credentials. Operations execute in the existing GUI model, preserving busy/queued states and process checks. Existing socket paths are rejected, not replaced; normal termination removes only the socket this app created. This does not protect against malicious software already running as the same user.

@@ -11,6 +11,7 @@ final class AppLifecycleTests: XCTestCase {
                                   styleMask: [.titled, .closable], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             let delegate = AppDelegate()
+            delegate.enableControl = false
             delegate.makeSettingsWindow = { window }
             delegate.applicationDidFinishLaunching(Notification(name: NSApplication.didFinishLaunchingNotification))
             XCTAssertTrue(window.isVisible, "Launching must show a usable entry even when the menu bar is crowded")
@@ -30,6 +31,7 @@ final class AppLifecycleTests: XCTestCase {
             window.isReleasedWhenClosed = false
             var creations = 0
             let delegate = AppDelegate()
+            delegate.enableControl = false
             delegate.makeSettingsWindow = { creations += 1; return window }
             delegate.applicationDidFinishLaunching(Notification(name: NSApplication.didFinishLaunchingNotification))
             window.close()

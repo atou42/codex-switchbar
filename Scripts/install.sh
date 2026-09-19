@@ -16,5 +16,17 @@ if [[ ! -w /Applications ]]; then
 fi
 # ditto updates the same local app path; there are no bundled third-party runtimes.
 /usr/bin/ditto "dist/Codex Switch.app" "$destination"
+mkdir -p "$HOME/.local/bin"
+cli_link="$HOME/.local/bin/codex-switch"
+cli_target="$destination/Contents/MacOS/codex-switch"
+if [[ -e "$cli_link" || -L "$cli_link" ]]; then
+  if [[ ! -L "$cli_link" || "$(readlink "$cli_link")" != "$cli_target" ]]; then
+    echo "Cannot install CLI: $cli_link already belongs to another installation." >&2
+    exit 1
+  fi
+else
+  ln -s "$cli_target" "$cli_link"
+fi
 open "$destination"
+printf '\nTerminal command: %s (add ~/.local/bin to PATH if needed)\n' "$cli_link"
 printf '\nInstalled in: %s\nLook for the two-arrow icon in the menu bar.\n' "$destination"

@@ -1,0 +1,35 @@
+name: macOS checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Source safety and shell syntax
+        run: |
+          python3 Scripts/check-source.py
+          for script in Scripts/*.sh; do bash -n "$script"; done
+      - name: Test on macOS (also type-checks native target)
+        run: swift test
+      - name: Build both Mac architectures
+        run: bash Scripts/build-app.sh --universal
+      - name: Package local-signed app
+        run: ditto -c -k --sequesterRsrc --keepParent "dist/Codex Switch.app" dist/Codex-Switch-macOS.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Codex-Switch-macOS-source-preview
+          path: dist/Codex-Switch-macOS.zip
+          if-no-files-found: error
+          retention-days: 7

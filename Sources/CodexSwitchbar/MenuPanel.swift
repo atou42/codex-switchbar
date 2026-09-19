@@ -1,0 +1,269 @@
+#if os(macOS)
+import AppKit
+import SwiftUI
+import SwitchCore
+
+@MainActor
+struct MenuPanel: View {
+    @ObservedObject var model: AppModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            HStack(spacing: 7) {
+                Image(systemName: "arrow.left.arrow.right").font(.system(size: 13, weight: .semibold))
+                Text("Codex Switch").font(.system(size: 13, weight: .semibold))
+                Spacer()
+                if model.working == "usage" {
+                    ProgressView().controlSize(.small).frame(width: 28, height: 28)
+                } else {
+                    IconButton(symbol: "arrow.clockwise", label: model.text("刷新当前账号用量", "Refresh active account usage")) {
+                        model.refreshUsage(manual: true)
+                    }.disabled(!model.fileReady || model.isBusy || model.active == nil)
+                }
+                IconButton(symbol: "gearshape", label: model.text("账号与设置", "Accounts & Settings"), action: settings)
+            }
+            if let account = model.active {
+                ActiveAccountCard(account: account, model: model)
+            } else {
+                Card {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Image(systemName: "person.crop.circle.badge.plus")
+                            .font(.system(size: 25, weight: .light)).foregroundStyle(Appearance.accent)
+                        Text(model.text(model.unsavedLogin ? "把当前登录保存下来" : "你的账号，都在这里", model.unsavedLogin ? "Keep your current login" : "Your accounts, in one place"))
+                            .font(.system(size: 20, weight: .semibold))
+                        Text(model.text("共用现有 Codex 配置与会话，只切换账号凭证。", "Keep one Codex configuration and session history. Switch only the login."))
+                            .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        if model.unsavedLogin {
+                            Button(model.text("保存当前登录", "Save current login")) { model.saveCurrent() }
+                                .buttonStyle(.borderedProminent).tint(Appearance.accent)
+                        } else {
+                            Button(model.text("开始设置", "Get started"), action: settings)
+                                .buttonStyle(.borderedProminent).tint(Appearance.accent)
+                        }
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            if let target = model.pendingAccount {
+                HStack(alignment: .top, spacing: 9) {
+                    Image(systemName: "clock.arrow.circlepath").foregroundStyle(.orange).padding(.top, 2)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(model.text("等待切换 → \(target.name)", "Switch queued → \(target.name)"))
+                            .font(.system(size: 12, weight: .medium))
+                        Text(model.text(model.isBusy ? "等当前查询结束，不打断你的任务。" : "退出 \(model.clients.count) 个 Codex 进程后切换。",
+                                        model.isBusy ? "Waiting for the current lookup." : "Close \(model.clients.count) Codex process(es) to continue."))
+                            .font(.system(size: 10)).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    IconButton(symbol: "xmark", label: model.text("取消切换", "Cancel switch")) { model.cancelPending() }
+                }.padding(10).background(Color.orange.opacity(0.08)).clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            if let message = model.message {
+                Notice(text: message, error: model.messageIsError) { model.message = nil }
+            }
+            if model.hasJournal && !model.isLogin {
+                Button(action: settings) {
+                    Label(model.text("未完成的切换需要核对", "Review an interrupted operation"), systemImage: "exclamationmark.shield")
+                        .font(.system(size: 11))
+                }.buttonStyle(.plain).foregroundStyle(.orange)
+            }
+            if !model.accounts.isEmpty {
+                HStack {
+                    Text(model.text("账号", "ACCOUNTS")).font(.system(size: 10, weight: .semibold)).tracking(0.7)
+                    Text("\(model.accounts.count)").font(.system(size: 10)).foregroundStyle(.tertiary)
+                    Spacer()
+                    Text(model.text("点击切换", "Click to switch")).font(.system(size: 10))
+                }.foregroundStyle(.secondary).padding(.horizontal, 3)
+                ScrollView {
+                    VStack(spacing: 3) {
+                        ForEach(model.accounts) { account in
+                            AccountRow(account: account, model: model) { model.requestSwitch(account) }
+                        }
+                    }
+                }
+                .frame(height: min(CGFloat(model.accounts.count) * 57, 228))
+            }
+            Divider().opacity(0.55)
+            HStack {
+                Button(action: settings) {
+                    Label(model.text("添加账号", "Add account"), systemImage: "plus.circle")
+                        .font(.system(size: 12, weight: .medium))
+                }.buttonStyle(.plain)
+                Spacer()
+                Text(model.text("共用一个环境", "One shared environment"))
+                    .font(.system(size: 10)).foregroundStyle(.tertiary)
+                Menu {
+                    Button(model.text("打开共享配置", "Open shared config")) { model.openConfig() }
+                    Button(model.text("打开官方用量页（浏览器账号）", "Open usage page (browser account)")) { model.openUsagePage() }
+                    Divider()
+                    Button(model.text("退出 Codex Switch", "Quit Codex Switch")) { model.quit() }
+                } label: { Image(systemName: "ellipsis").frame(width: 20, height: 20) }
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            }
+        }
+        .padding(16).frame(width: 392)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear { model.menuOpened() }
+    }
+    private func settings() {
+        openWindow(id: "settings")
+        NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
+@MainActor
+private struct ActiveAccountCard: View {
+    var account: SavedAccount
+    @ObservedObject var model: AppModel
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            Card {
+                VStack(alignment: .leading, spacing: 17) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(model.text("当前凭证", "ACTIVE LOGIN"))
+                                .font(.system(size: 9, weight: .semibold)).tracking(1).foregroundStyle(.secondary)
+                            Text(account.name).font(.system(size: 23, weight: .semibold)).lineLimit(1)
+                            Text(model.maskEmails ? AccountName.masked(account.email) : (account.email ?? "—"))
+                                .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        Spacer()
+                        Text((account.plan ?? "ChatGPT").uppercased())
+                            .font(.system(size: 9, weight: .semibold)).tracking(0.3)
+                            .padding(.horizontal, 8).padding(.vertical, 5)
+                            .foregroundStyle(Appearance.accent).background(Appearance.accent.opacity(0.10))
+                            .clipShape(Capsule())
+                    }
+                    VStack(spacing: 14) {
+                        QuotaRow(window: account.usage?.main?.primary, secondary: false, chinese: model.chinese, now: context.date)
+                        QuotaRow(window: account.usage?.main?.secondary, secondary: true, chinese: model.chinese, now: context.date)
+                    }
+                    if let usage = account.usage, usage.buckets.count > 1 {
+                        DisclosureGroup(model.text("其他额度窗口", "Other quota windows")) {
+                            VStack(spacing: 12) {
+                                ForEach(usage.buckets.filter { $0.id != usage.main?.id }) { bucket in
+                                    VStack(alignment: .leading, spacing: 7) {
+                                        Text(bucket.limitName ?? bucket.id).font(.system(size: 11, weight: .semibold))
+                                        if let window = bucket.primary { QuotaRow(window: window, secondary: false, chinese: model.chinese, now: context.date) }
+                                        if let window = bucket.secondary { QuotaRow(window: window, secondary: true, chinese: model.chinese, now: context.date) }
+                                    }
+                                }
+                            }.padding(.top, 8)
+                        }.font(.system(size: 11)).foregroundStyle(.secondary)
+                    }
+                    VStack(spacing: 7) {
+                        Divider().opacity(0.5)
+                        HStack {
+                            Text(model.text("额外额度", "Extra credits")).foregroundStyle(.secondary)
+                            Spacer()
+                            Text(UsagePresentation.credits(account.usage?.main?.credits, chinese: model.chinese))
+                                .monospacedDigit()
+                        }.font(.system(size: 11))
+                        if let count = account.usage?.availableResetCredits {
+                            HStack {
+                                Text(model.text("可用重置次数", "Available resets")).foregroundStyle(.secondary)
+                                Spacer(); Text("\(count)").monospacedDigit()
+                            }.font(.system(size: 11))
+                        }
+                    }
+                    HStack(spacing: 4) {
+                        Circle().fill(account.usage?.isStale(at: context.date) == false ? Appearance.accent : Color.secondary.opacity(0.45))
+                            .frame(width: 4, height: 4)
+                        if let usage = account.usage {
+                            Text(model.text("官方 Codex · \(UsagePresentation.age(usage.fetchedAt, now: context.date, chinese: true))检查",
+                                            "Official Codex · Checked \(UsagePresentation.age(usage.fetchedAt, now: context.date, chinese: false))"))
+                            Spacer(minLength: 0)
+                            if usage.isStale(at: context.date) { Text(model.text("待刷新", "Stale")) }
+                        } else { Text(model.text("尚未读取用量 · 不会估算余额", "Usage not read yet · No estimated balance")) }
+                    }.font(.system(size: 9)).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+}
+
+@MainActor
+private struct QuotaRow: View {
+    var window: UsageWindow?
+    var secondary: Bool
+    var chinese: Bool
+    var now: Date
+    private var percent: Double? { window?.remaining }
+    private var color: Color { (percent ?? 100) < 15 ? .orange : Appearance.accent }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(UsagePresentation.windowTitle(window, secondary: secondary, chinese: chinese))
+                    .font(.system(size: 12, weight: .medium))
+                Spacer()
+                Text(UsagePresentation.percent(window)).font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit()
+                Text(chinese ? "剩余" : "left").font(.system(size: 10)).foregroundStyle(.secondary)
+            }
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.primary.opacity(0.075))
+                    if let percent {
+                        Capsule().fill(color).frame(width: geometry.size.width * percent / 100)
+                    }
+                }
+            }.frame(height: 5)
+                .accessibilityLabel(UsagePresentation.windowTitle(window, secondary: secondary, chinese: chinese))
+                .accessibilityValue(UsagePresentation.percent(window))
+            HStack {
+                Text(UsagePresentation.reset(window, now: now, chinese: chinese))
+                Spacer(minLength: 0)
+                if let window, let reset = window.validResetTimestamp, !window.resetIsPast(at: now) {
+                    Text(Date(timeIntervalSince1970: reset), style: .time)
+                }
+            }.font(.system(size: 10)).foregroundStyle(.secondary)
+                .help(UsagePresentation.exactReset(window, chinese: chinese))
+        }
+    }
+}
+
+@MainActor
+struct AccountRow: View {
+    var account: SavedAccount
+    @ObservedObject var model: AppModel
+    var action: () -> Void
+    @State private var hovering = false
+    private var active: Bool { model.activeID == account.id }
+    private var queued: Bool { model.pending?.id == account.id }
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Text(String(account.name.prefix(1)).uppercased())
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(active ? Appearance.accent : Color.secondary)
+                    .frame(width: 30, height: 30)
+                    .background(active ? Appearance.accent.opacity(0.11) : Color.primary.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 9))
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Text(account.name).font(.system(size: 12, weight: active ? .semibold : .medium)).lineLimit(1)
+                        if active { Text(model.text("当前", "Active")).font(.system(size: 9)).foregroundStyle(Appearance.accent) }
+                    }
+                    if let usage = account.usage {
+                        Text("\(UsagePresentation.percent(usage.main?.primary)) / \(UsagePresentation.percent(usage.main?.secondary)) · " +
+                             (active ? model.text("短 / 长周期", "short / long") : model.text("缓存 · \(UsagePresentation.age(usage.fetchedAt, chinese: true))", "cached · \(UsagePresentation.age(usage.fetchedAt, chinese: false))")))
+                            .font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
+                    } else {
+                        Text(model.text("用量待查询", "Usage not checked yet")).font(.system(size: 9)).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer(minLength: 0)
+                Image(systemName: queued ? "clock" : (active ? "checkmark.circle.fill" : "arrow.right"))
+                    .font(.system(size: active ? 15 : 11))
+                    .foregroundStyle(queued ? Color.orange : (active ? Appearance.accent : Color.secondary.opacity(hovering ? 1 : 0.35)))
+            }
+            .padding(.horizontal, 10).padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
+            .background(active ? Appearance.accent.opacity(0.045) : (hovering ? Appearance.softFill : .clear))
+            .clipShape(RoundedRectangle(cornerRadius: 11))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).disabled(model.isLogin || model.hasJournal)
+        .onHover { hovering = $0 }
+        .help((model.maskEmails ? AccountName.masked(account.email) : account.email ?? account.name) + " · " + (account.plan ?? "ChatGPT"))
+        .accessibilityLabel(model.text("切换至 \(account.name)", "Switch to \(account.name)"))
+    }
+}
+#endif

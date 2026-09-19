@@ -1,0 +1,23 @@
+.build/
+.swiftpm/
+dist/
+.DS_Store
+*.xcuserstate
+xcuserdata/
+# Never publish live account data or OAuth backups.
+auth.json
+auth.*.json
+accounts.json
+transaction.json
+*.keychain*
+*.db
+*.sqlite*
+*.log
+.env
+.env.*
+*.pem
+*.p12
+*.mobileprovision
+config.toml
+config.before-*.toml
+*.git.bundle

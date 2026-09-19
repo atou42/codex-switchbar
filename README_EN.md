@@ -89,3 +89,9 @@ The installer adds `~/.local/bin/codex-switch`; include that directory in PATH. 
 Commands control the same menu-bar app and account store. Account commands launch it in the background if needed; `start` opens settings. `stop` and `status` do not launch a stopped app. Login and switching can be asynchronous: `login_pending`, `switch_queued`, and `working` are pending states, not completion. Use `status` to check the eventual result and active account. Immediate errors return a nonzero exit code. Adding requires Codex clients to be closed. Duplicate names require an exact account ID from `list`. Credentials are never returned.
 
 The owner-only local socket checks both peers' user IDs. An occupied socket path is never automatically deleted, even after a crash; investigate the existing instance/state first.
+
+## Device-code sign-in and compact menu bar
+
+Choose Browser or Device code above the account name. Device mode shows a one-time code, Copy code, and the official verification-page button. CLI: `codex-switch add "Work" --device`, then `codex-switch status` for the code and URL; the default or `--browser` uses browser login. Device failure never silently falls back to browser login. Codes are held only in memory during login and cleared on completion/cancellation.
+
+The menu bar shows only the icon and remaining percentage. Account names and details remain in the expanded panel. Hidden, missing, or stale quota produces an icon-only label.

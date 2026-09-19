@@ -14,6 +14,7 @@ codex-switch list                   列出账号名称、ID 和当前账号
 codex-switch setup                  备份配置并启用文件登录保存
 codex-switch save [名称]            保存当前登录
 codex-switch add "名称"             打开官方页面添加账号
+codex-switch add "名称" --device    设备码登录；用 status 查看设备码和验证地址
 codex-switch switch "名称或ID"      切换；Codex 运行中则排队等待
 codex-switch rename "名称或ID" "新名称"
 codex-switch remove "名称或ID"      移除本工具保存的副本，不注销当前登录
@@ -39,7 +40,11 @@ func run() throws -> Int32 {
         response = ControlResponse(state: "stopped", message: "Codex Switch 已退出。")
     } else {
         if running.isEmpty {
-            let binary = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
+            var pathSize: UInt32 = 0
+            _ = _NSGetExecutablePath(nil, &pathSize)
+            var pathBytes = [CChar](repeating: 0, count: Int(pathSize))
+            guard _NSGetExecutablePath(&pathBytes, &pathSize) == 0 else { throw SwitchError.executableMissing }
+            let binary = URL(fileURLWithPath: String(cString: pathBytes)).resolvingSymlinksInPath()
             let bundle = binary.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             guard bundle.pathExtension == "app", FileManager.default.fileExists(atPath: bundle.path) else {
                 throw NSError(domain: "CodexSwitch", code: 1, userInfo: [NSLocalizedDescriptionKey: "请使用已安装应用中的 codex-switch 命令。"])
@@ -69,6 +74,9 @@ func run() throws -> Int32 {
     } else {
         let summary = "\(response.state)\(response.message.map { " · " + $0 } ?? "")\n"
         (response.ok ? FileHandle.standardOutput : FileHandle.standardError).write(Data(summary.utf8))
+        if let code = response.loginCode, let url = response.verificationURL {
+            print("验证地址：\(url)\n设备码：\(code)")
+        }
         for account in response.accounts {
             print("\(account.active ? "*" : " ") \(account.name)  \(account.id.uuidString)")
             if command.action == "usage", let usage = account.usage, account.active {

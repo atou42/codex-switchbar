@@ -76,3 +76,9 @@ Use an ordinary self-owned account and inspect the source first. Never put test 
 ## CLI follow-up — 2026-09-19
 
 All 60 tests passed, including 5 local-transport checks and 3 command/selector/response checks. Rebuilt and installed both app and CLI; signature verification passed. On the installed app, exercised list, status, stop, automatic background launch through list, and start. Unknown account switch/remove requests returned nonzero failure without changing the live credential bytes. Confirmed the start command opened the real settings window. No real account addition or A → B → A switch was performed; those remain pending. Account operations are routed through the existing app model, and asynchronous operations return pending states.
+
+## Device-code and compact-menu follow-up — 2026-09-19
+
+All 66 tests passed. Tests cover browser/device response parsing, missing/invalid code and untrusted URL rejection, explicit CLI method selection, official-RPC device challenge/completion using a synthetic server, and compact percentage formatting including unknown/stale/disabled/zero states. The installed native UI showed both sign-in choices; selecting Device code was verified. A real official device challenge was obtained and cancelled using an isolated temporary Codex home, without completing authentication or changing the live home. End-to-end user authorization is still pending. The compact label is covered by formatting tests; desktop menu-bar pixels were not captured.
+
+During install, invoking `codex-switch start` by PATH while stopped exposed an existing executable-location bug. Replaced argv[0] path guessing with the OS-provided executable path; the same command then opened the installed app successfully.

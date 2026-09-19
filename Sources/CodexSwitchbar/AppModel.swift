@@ -24,6 +24,7 @@ final class AppModel: ObservableObject {
     @Published var message: String?
     @Published var messageIsError = false
     @Published var loginURL: URL?
+    @Published var loginCode: String?
     @Published var launchAtLogin = false
     @Published var language: String { didSet { UserDefaults.standard.set(language, forKey: "language") } }
     @Published var maskEmails: Bool { didSet { UserDefaults.standard.set(maskEmails, forKey: "maskEmails") } }
@@ -51,10 +52,7 @@ final class AppModel: ObservableObject {
     var fileReady: Bool { configMode == .file }
     var executable: URL? { CodexExecutable.find(override: executablePath) }
     var barTitle: String {
-        let name = String((active?.name ?? text("未选择", "No account")).prefix(14))
-        guard showPercent, let usage = active?.usage, !usage.isStale(at: Date()),
-              let percent = usage.main?.primary?.remaining else { return name }
-        return "\(name) · \(Int(percent.rounded()))%"
+        MenuBarQuota.title(showPercent: showPercent, usage: active?.usage)
     }
 
     init() {
@@ -233,13 +231,13 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func startLogin(name: String) {
+    func startLogin(name: String, method: LoginMethod = .browser) {
         guard !shuttingDown, !isBusy, let store else { return }
         guard let executable else { show(SwitchError.executableMissing); return }
         let validatedName: String
         do { validatedName = try AccountName.validate(name); try store.beginLogin() }
         catch { show(error); return }
-        pending = nil; message = nil; working = "login"
+        pending = nil; message = nil; loginURL = nil; loginCode = nil; working = "login"
         let flag = CancellationFlag(); cancellation = flag
         let home = self.home
         operationTask = Task { [weak self] in
@@ -248,22 +246,20 @@ final class AppModel: ObservableObject {
                     let client = try AppServerClient(executable: executable, home: home, cancellation: flag)
                     defer { client.close() }
                     try client.initialize()
-                    let reply = try client.request("account/login/start", params: ["type": "chatgpt"])
-                    guard let id = reply["loginId"] as? String, let authURL = reply["authUrl"] as? String else {
-                        throw SwitchError.rpc("account/login/start")
-                    }
-                    let url = try AppServerClient.validatedLoginURL(authURL)
+                    let reply = try client.request("account/login/start", params: ["type": method.rpcType])
+                    let challenge = try LoginChallenge(reply: reply, method: method)
                     await MainActor.run { [weak self] in
                         guard !flag.isCancelled else { return }
-                        self?.loginURL = url
-                        NSWorkspace.shared.open(url)
+                        self?.loginURL = challenge.url
+                        self?.loginCode = challenge.userCode
+                        if method == .browser { NSWorkspace.shared.open(challenge.url) }
                     }
-                    try client.waitForLogin(id: id)
+                    try client.waitForLogin(id: challenge.id, timeout: method == .device ? 900 : 180)
                     return .success(())
                 } catch { return .failure(error as? SwitchError ?? .processFailed) }
             }.value
             guard let self else { return }
-            self.working = nil; self.cancellation = nil; self.loginURL = nil
+            self.working = nil; self.cancellation = nil; self.loginURL = nil; self.loginCode = nil
             let success: Bool
             if case .success = result { success = true } else { success = false }
             do { _ = try self.store?.finishLogin(name: validatedName, succeeded: success) }

@@ -7,6 +7,7 @@ import SwitchCore
 struct SettingsPanel: View {
     @ObservedObject var model: AppModel
     @State private var newName = ""
+    @State private var loginMethod: LoginMethod = .browser
     @State private var renaming: SavedAccount?
     @State private var renamed = ""
     @State private var deleting: SavedAccount?
@@ -144,6 +145,21 @@ struct SettingsPanel: View {
                     Notice(text: model.text("等待切换至 \(pending.name)。退出所有 Codex 进程后自动完成，5 分钟后取消。", "Waiting to switch to \(pending.name). Close all Codex processes; expires in 5 minutes.")) { model.cancelPending() }
                 }
                 if model.isLogin {
+                    if let code = model.loginCode {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(model.text("打开验证页面，输入设备码完成登录", "Open the verification page and enter this device code"))
+                            HStack {
+                                Text(code).font(.system(size: 24, weight: .semibold, design: .monospaced)).textSelection(.enabled)
+                                Button(model.text("复制设备码", "Copy code")) {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(code, forType: .string)
+                                }
+                            }
+                            if let url = model.loginURL {
+                                Text(url.absoluteString).font(.system(size: 11)).textSelection(.enabled)
+                            }
+                        }
+                    }
                     HStack {
                         ProgressView().controlSize(.small)
                         Text(model.text("在官方页面完成登录…", "Finish signing in on the official page…"))
@@ -155,10 +171,14 @@ struct SettingsPanel: View {
                         Button(model.text("取消", "Cancel")) { model.cancelOperation() }.controlSize(.small)
                     }
                 } else {
+                    Picker(model.text("登录方式", "Sign-in method"), selection: $loginMethod) {
+                        Text(model.text("网页登录", "Browser")).tag(LoginMethod.browser)
+                        Text(model.text("设备码登录", "Device code")).tag(LoginMethod.device)
+                    }.pickerStyle(.segmented)
                     HStack {
                         TextField(model.text("账号名称（必填），例如：工作 / 个人", "Account name (required), e.g. Work / Personal"), text: $newName)
                             .textFieldStyle(.roundedBorder)
-                        Button(model.text("添加账号并登录", "Add account & sign in")) { model.startLogin(name: newName) }
+                        Button(model.text("添加账号并登录", "Add account & sign in")) { model.startLogin(name: newName, method: loginMethod) }
                             .buttonStyle(.borderedProminent)
                             .disabled(model.isBusy || !model.fileReady || model.hasJournal || newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }

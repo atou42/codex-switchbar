@@ -23,9 +23,12 @@ struct CodexSwitchbarApp: App {
 private struct SwitchMenuLabel: View {
     @ObservedObject var model: AppModel
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 3) {
             Image(systemName: model.pending == nil ? "arrow.left.arrow.right" : "clock.arrow.circlepath")
-            Text(model.barTitle)
+            if !model.barTitle.isEmpty {
+                Text(model.barTitle)
+                    .monospacedDigit()
+            }
         }
         .help(model.text("Codex 当前文件登录 · 点击查看", "Codex file login · Click for details"))
     }

@@ -14,7 +14,7 @@
 
 ## 做什么
 
-菜单栏显示当前账号与短周期剩余额度。展开后可以查看短 / 长周期额度、距重置时间、准确的本地重置日期，以及接口实际提供的额外 credits 和可用重置次数。点击账号即可请求切换。设置中提供添加、保存当前登录、重命名、移除副本、中英切换、邮箱遮挡和开机启动。
+菜单栏仅显示图标与剩余额度百分比，账号名称和详情在展开面板中显示。展开后可以查看短 / 长周期额度、距重置时间、准确的本地重置日期，以及接口实际提供的额外 credits 和可用重置次数。点击账号即可请求切换。设置中提供添加、保存当前登录、重命名、移除副本、中英切换、邮箱遮挡和开机启动。
 
 **不建立多个 HOME。** 所有账号继续使用同一个 `~/.codex`，同一个 `config.toml`、会话历史、MCP 与 skills。切换只写登录文件。账号的保存副本存放在 macOS 钥匙串中，不放进项目目录。
 
@@ -76,7 +76,8 @@ codex-switch stop                    # 退出本工具，不关闭你的 Codex
 codex-switch list                    # 查看账号；* 表示当前账号
 codex-switch setup                   # 首次设置：备份配置并启用文件登录
 codex-switch save "个人"             # 保存当前登录
-codex-switch add "工作"              # 打开官方页面添加另一个账号
+codex-switch add "工作"              # 网页登录
+codex-switch add "工作" --device     # 设备码登录，用 status 查看设备码和验证地址
 codex-switch switch "工作"           # 切换账号
 codex-switch status                  # 查看进度、错误和当前账号
 codex-switch cancel                  # 取消登录或等待中的切换
@@ -176,3 +177,11 @@ bash Scripts/publish.sh
 ## 参考与许可
 
 UI 参考 CodexBar 的紧凑额度面板、Codex Switcher 的账号列表；代码独立实现，无第三方代码或素材打包。[具体来源](docs/REFERENCES.md)。非 OpenAI 官方产品。MIT 许可。
+
+## 选择登录方式
+
+在账号名称上方选择「网页登录」或「设备码登录」，再点击「添加账号并登录」。设备码模式显示一次性验证码、复制按钮和官方验证页面入口；可在另一台设备的浏览器完成验证。取消或完成后会清除显示的设备码。不会在设备码失败时自动改用网页登录。
+
+终端使用 `codex-switch add "名称" --device`，随后运行 `codex-switch status` 查看设备码与验证地址；默认或 `--browser` 使用网页登录。设备码只在登录进行时保存在内存并向本机当前用户显示，不写入账号列表。
+
+官方接口参考：[设备码登录](https://developers.openai.com/zh-Hans/docs/app-server#3b-使用-chatgpt-登录设备代码流程)。

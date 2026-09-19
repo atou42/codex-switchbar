@@ -7,12 +7,14 @@ public struct ControlCommand: Codable, Equatable {
         guard let action = arguments.first else { throw ControlError.usage }
         let counts: [String: ClosedRange<Int>] = [
             "start": 0...0, "stop": 0...0, "status": 0...0, "list": 0...0,
-            "setup": 0...0, "save": 0...1, "add": 1...1, "switch": 1...1,
+            "setup": 0...0, "save": 0...1, "add": 1...2, "switch": 1...1,
             "rename": 2...2, "remove": 1...1, "cancel": 0...0, "usage": 0...0
         ]
         let values = Array(arguments.dropFirst())
         guard let count = counts[action], count.contains(values.count),
-              values.allSatisfy({ !$0.isEmpty && !$0.hasPrefix("--") }) else { throw ControlError.usage }
+              values.enumerated().allSatisfy({ index, value in
+                  !value.isEmpty && (!value.hasPrefix("--") || (action == "add" && index == 1 && ["--device", "--browser"].contains(value)))
+              }), action != "add" || values.count == 1 || ["--device", "--browser"].contains(values[1]) else { throw ControlError.usage }
         self.action = action; self.arguments = values
     }
     public func validated() throws -> ControlCommand { try ControlCommand(arguments: [action] + arguments) }
@@ -51,7 +53,10 @@ public struct ControlResponse: Codable {
     public let state: String
     public let message: String?
     public let accounts: [ControlAccount]
-    public init(ok: Bool = true, state: String, message: String? = nil, accounts: [ControlAccount] = []) {
+    public let loginCode: String?
+    public let verificationURL: String?
+    public init(ok: Bool = true, state: String, message: String? = nil, accounts: [ControlAccount] = [], loginCode: String? = nil, verificationURL: String? = nil) {
         self.ok = ok; self.state = state; self.message = message; self.accounts = accounts
+        self.loginCode = loginCode; self.verificationURL = verificationURL
     }
 }

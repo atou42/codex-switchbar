@@ -38,3 +38,5 @@ Do not post `auth.json`, Keychain exports, OAuth callback URLs, full JWTs, accou
 ## Local terminal control
 
 The CLI connects to an owner-only Unix-domain socket in the private application-support directory. Both peers verify the macOS user ID. Messages are limited to 1 MiB and transport waits are bounded. Requests contain actions and account labels/IDs, never credentials. Operations execute in the existing GUI model, preserving busy/queued states and process checks. Existing socket paths are rejected, not replaced; normal termination removes only the socket this app created. This does not protect against malicious software already running as the same user.
+
+Device-code login uses the official `chatgptDeviceCode` RPC. Its short-lived user code and allowlisted verification URL are returned only to the current user's local CLI while login is pending and shown in the app. They are not persisted, logged, or included in the account registry. Long-lived credentials are never returned over local control.

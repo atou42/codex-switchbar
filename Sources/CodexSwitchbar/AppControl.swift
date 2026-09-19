@@ -26,7 +26,7 @@ extension AppDelegate {
             switch command.action {
             case "setup": try store.enableFileMode()
             case "save": _ = try store.saveCurrent(name: args.first)
-            case "add": model.startLogin(name: args[0])
+            case "add": model.startLogin(name: args[0], method: args.last == "--device" ? .device : .browser)
             case "switch":
                 let target = try ControlCommand.account(args[0], in: store.loadRegistry().accounts)
                 model.requestSwitch(target)
@@ -52,7 +52,8 @@ extension AppDelegate {
     private func snapshotResponse() -> ControlResponse {
         let state = model.isLogin ? "login_pending" : model.pending != nil ? "switch_queued" : model.isBusy ? "working" : model.messageIsError ? "error" : "idle"
         return ControlResponse(ok: !model.messageIsError, state: state, message: model.message,
-                               accounts: model.accounts.map { ControlAccount(account: $0, activeID: model.activeID) })
+                               accounts: model.accounts.map { ControlAccount(account: $0, activeID: model.activeID) },
+                               loginCode: model.loginCode, verificationURL: model.loginCode == nil ? nil : model.loginURL?.absoluteString)
     }
 }
 #endif

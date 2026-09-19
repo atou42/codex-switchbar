@@ -25,7 +25,9 @@ final class RPCTests: StoreTestCase {
             elif method == 'account/rateLimits/read': result = {'rateLimits': {'primary': {'usedPercent': 25,'windowDurationMins':300}}}
             elif method == 'account/login/start':
                 print(json.dumps({'method':'account/login/completed', 'params': {'loginId':'test-login','success':True}}), flush=True)
-                result = {'loginId':'test-login', 'authUrl':'https://auth.openai.com/oauth/authorize'}
+                if m.get('params', {}).get('type') == 'chatgptDeviceCode':
+                    result = {'type':'chatgptDeviceCode', 'loginId':'test-login', 'verificationUrl':'https://auth.openai.com/codex/device', 'userCode':'TEST-1234'}
+                else: result = {'loginId':'test-login', 'authUrl':'https://auth.openai.com/oauth/authorize'}
             else: result = {}
             if mode == 'error': print(json.dumps({'id':m['id'], 'error':{'message':'DO_NOT_EXPOSE_RAW_SECRET'}}), flush=True)
             else: print(json.dumps({'id':m['id'], 'result':result}), flush=True)
@@ -50,6 +52,16 @@ final class RPCTests: StoreTestCase {
         try client.initialize()
         _ = try client.request("account/login/start", params: ["type":"chatgpt"])
         try client.waitForLogin(id: "test-login", timeout: 1)
+    }
+    func testDeviceLoginUsesOfficialChallengeAndCompletion() throws {
+        let client = try AppServerClient(executable: helper(), home: home)
+        defer { client.close() }
+        try client.initialize()
+        let reply = try client.request("account/login/start", params: ["type": LoginMethod.device.rpcType])
+        let challenge = try LoginChallenge(reply: reply, method: .device)
+        XCTAssertEqual(challenge.userCode, "TEST-1234")
+        XCTAssertEqual(challenge.url.absoluteString, "https://auth.openai.com/codex/device")
+        try client.waitForLogin(id: challenge.id, timeout: 1)
     }
     func testRawRPCErrorIsRedacted() throws {
         let client = try AppServerClient(executable: helper("error"), home: home)

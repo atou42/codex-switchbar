@@ -11,6 +11,7 @@ let package = Package(
     targets: [
         .target(name: "SwitchCore"),
         .executableTarget(name: "CodexSwitchbar", dependencies: ["SwitchCore"]),
-        .testTarget(name: "SwitchCoreTests", dependencies: ["SwitchCore"])
+        .testTarget(name: "SwitchCoreTests", dependencies: ["SwitchCore"]),
+        .testTarget(name: "AppLifecycleTests", dependencies: ["CodexSwitchbar"])
     ]
 )

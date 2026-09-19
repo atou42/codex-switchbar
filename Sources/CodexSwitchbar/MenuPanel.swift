@@ -6,7 +6,7 @@ import SwitchCore
 @MainActor
 struct MenuPanel: View {
     @ObservedObject var model: AppModel
-    @Environment(\.openWindow) private var openWindow
+    var showSettings: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
@@ -106,8 +106,7 @@ struct MenuPanel: View {
         .onAppear { model.menuOpened() }
     }
     private func settings() {
-        openWindow(id: "settings")
-        NSApp.activate(ignoringOtherApps: true)
+        showSettings()
     }
 }
 

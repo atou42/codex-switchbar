@@ -11,6 +11,10 @@ On macOS 26.2 (Apple Silicon), using Apple Swift 6.3.3:
 
 The original Linux delivery record below is retained as historical evidence; its environment and publication statements describe that original delivery.
 
+### Launch-window fix — 2026-09-19
+
+The first installed build stayed running but reopening it did not show a window. Two native lifecycle regression tests reproduced the missing launch/reopen behavior before the fix. The app now owns one reusable settings window, opens it on launch and reopen, and shares its account model with the menu panel. All 52 tests passed after the fix. The rebuilt installed app's real “账号与设置” window was inspected through macOS accessibility; it showed the expected file-store setup prompt. No authentication setting was changed. Menu-bar placement and real account switching remain unverified.
+
 Recorded 2026-09-19. This is an honest boundary between executed checks and work that requires a Mac/account. No real OpenAI credentials were available to or used by this build environment.
 
 ## Executed here

@@ -25,7 +25,7 @@ Queues are in-memory, tied to the observed starting identity, cancellable, and e
 
 ## Official RPC boundary
 
-The app starts the installed executable with `-s read-only -a untrusted app-server`, the existing shared home, and no token arguments. Calls are serialized on a background worker:
+The app starts the installed executable with `-s read-only -a never app-server`, the existing shared home, and no token arguments. No model turns are requested, and server-initiated tool requests are rejected. Calls are serialized on a background worker:
 
 - `initialize`, followed by the `initialized` notification;
 - `account/read` with `refreshToken: false` to verify the visible account;

@@ -26,7 +26,7 @@ Install Apple development tools (`xcode-select --install`) and the official Code
 bash Scripts/install.sh
 ```
 
-The installer tests, builds the host architecture, ad-hoc signs, and installs `~/Applications/Codex Switch.app`. No `sudo`, npm dependencies, credentials, or bundled Codex are required. Quit an existing copy before updating. For just a build or both Mac architectures:
+The installer tests, builds the host architecture, ad-hoc signs, and installs `/Applications/Codex Switch.app`. No `sudo`, npm dependencies, credentials, or bundled Codex are required. Quit an existing copy before updating. For just a build or both Mac architectures:
 
 ```sh
 bash Scripts/build-app.sh

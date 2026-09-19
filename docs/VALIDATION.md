@@ -23,6 +23,12 @@ Recorded 2026-09-19. This is an honest boundary between executed checks and work
 
 ## Executed here
 
+### Applications and account guidance follow-up — 2026-09-19
+
+Moved the installed app into `/Applications`, confirmed its selected icon in Finder's Applications folder, and opened it from Finder. Verified the clearer account instructions and that entering a name enables “添加账号并登录”. Existing saved-account metadata remained visible; no additional login or account switch was performed.
+
+The installed official Codex 0.155.0 rejected `-a untrusted` with exit status 2. Updated the synthetic CLI to validate current supported arguments and reproduced a failing handshake test before changing the app to `-a never`. All 52 tests passed afterward; a real official `initialize` handshake also passed using a temporary isolated home without login or model requests. Rebuilt and installed the app; the previous helper-startup error was no longer visible on launch. Real multi-account OAuth/switching remains pending.
+
 | Check | Environment | Result |
 | --- | --- | --- |
 | `swift test` | Swift 6.2.1, x86_64 Linux | **50 tests passed; 0 failures** |

@@ -9,8 +9,11 @@ if /usr/bin/pgrep -x CodexSwitchbar >/dev/null 2>&1; then
 fi
 swift test
 bash Scripts/build-app.sh
-mkdir -p "$HOME/Applications"
-destination="$HOME/Applications/Codex Switch.app"
+destination="/Applications/Codex Switch.app"
+if [[ ! -w /Applications ]]; then
+  echo 'Cannot write to /Applications. Ask a Mac administrator to install dist/Codex Switch.app there.' >&2
+  exit 1
+fi
 # ditto updates the same local app path; there are no bundled third-party runtimes.
 /usr/bin/ditto "dist/Codex Switch.app" "$destination"
 open "$destination"

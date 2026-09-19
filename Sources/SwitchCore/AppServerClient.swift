@@ -23,7 +23,7 @@ public final class AppServerClient {
         self.cancellation = cancellation
         process = Process(); input = Pipe(); output = Pipe()
         process.executableURL = executable
-        process.arguments = ["-s", "read-only", "-a", "untrusted", "app-server"]
+        process.arguments = ["-s", "read-only", "-a", "never", "app-server"]
         process.currentDirectoryURL = home
         var env = ProcessInfo.processInfo.environment
         env["CODEX_HOME"] = home.path

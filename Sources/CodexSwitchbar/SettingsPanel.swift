@@ -16,8 +16,10 @@ struct SettingsPanel: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(model.text("账号与设置", "Accounts & Settings")).font(.system(size: 24, weight: .semibold))
-                Text(model.text("一个 Codex 环境。登录由你选择。", "One Codex environment. You choose the login."))
+                Text(model.text("保存多个账号，随时从顶部菜单栏选择。", "Save multiple accounts and choose one from the menu bar."))
                     .font(.system(size: 12)).foregroundStyle(.secondary)
+                Text(model.text("关闭窗口后仍在顶部菜单栏运行。完全退出后，在“应用程序”中打开 Codex Switch。", "Closing this window keeps the app in the menu bar. After quitting, open Codex Switch from Applications."))
+                    .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }.padding(24)
             Divider()
             ScrollView {
@@ -65,12 +67,12 @@ struct SettingsPanel: View {
     }
 
     private var sharedEnvironment: some View {
-        section(model.text("共享环境", "Shared environment")) {
+        section(model.text("首次使用", "Getting started")) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Image(systemName: model.fileReady ? "checkmark.shield" : "slider.horizontal.3")
                         .foregroundStyle(model.fileReady ? Appearance.accent : Color.orange)
-                    Text(model.fileReady ? model.text("文件凭证已就绪", "File credentials are ready") : model.text("需要一次性设置", "One-time setup required"))
+                    Text(model.fileReady ? model.text("已准备好，可以添加账号", "Ready to add accounts") : model.text("第 1 步：允许保存和切换账号", "Step 1: Enable account switching"))
                         .font(.system(size: 13, weight: .semibold))
                     Spacer()
                     Button(model.text("打开配置", "Open config")) { model.openConfig() }.controlSize(.small)
@@ -78,11 +80,11 @@ struct SettingsPanel: View {
                 Text(model.home.path).font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(.secondary).textSelection(.enabled)
                 if !model.fileReady {
-                    Text(model.text("需要在现有 config.toml 的顶层设置文件凭证。不会生成按账号分开的 HOME 或配置。", "The existing config.toml needs top-level file credential storage. No per-account homes or configs are created."))
+                    Text(model.text("先完成这一步，下方添加账号的按钮才会启用。将先备份 Codex 配置，再启用文件登录保存；你现有的会话和其他设置会保留。", "Complete this step to enable the account buttons below. The app backs up your Codex configuration, then enables file-based login storage. Existing sessions and other settings are preserved."))
                         .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     HStack {
                         if model.configMode == .missing {
-                            Button(model.text("启用文件凭证（先备份配置）", "Enable file storage (back up config first)")) { model.enableFileMode() }
+                            Button(model.text("开始设置（先备份配置）", "Set up (back up config first)")) { model.enableFileMode() }
                                 .buttonStyle(.borderedProminent).disabled(model.isBusy)
                         } else {
                             Button(model.text("复制所需设置", "Copy required setting")) { model.copyConfigLine() }
@@ -106,8 +108,14 @@ struct SettingsPanel: View {
         }
     }
     private var accountManagement: some View {
-        section(model.text("账号", "Accounts")) {
+        section(model.text("我的账号", "My accounts")) {
             VStack(alignment: .leading, spacing: 13) {
+                Text(model.text("已登录 Codex？先点“保存当前账号”。要添加其他账号，请填一个名称，再点“添加账号并登录”；每个账号重复一次。", "Already signed in to Codex? Choose Save current account. To add another, enter a name and choose Add account & sign in. Repeat for each account."))
+                    .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                if !model.fileReady {
+                    Text(model.text("请先完成上方“首次使用”设置。", "Complete Getting started above first."))
+                        .font(.system(size: 11)).foregroundStyle(.orange)
+                }
                 ForEach(model.accounts) { account in
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 5) {
@@ -148,15 +156,17 @@ struct SettingsPanel: View {
                     }
                 } else {
                     HStack {
-                        TextField(model.text("新账号名称，例如 Work", "New account name, e.g. Work"), text: $newName)
+                        TextField(model.text("账号名称（必填），例如：工作 / 个人", "Account name (required), e.g. Work / Personal"), text: $newName)
                             .textFieldStyle(.roundedBorder)
-                        Button(model.text("用官方 Codex 登录", "Sign in with Codex")) { model.startLogin(name: newName) }
+                        Button(model.text("添加账号并登录", "Add account & sign in")) { model.startLogin(name: newName) }
                             .buttonStyle(.borderedProminent)
                             .disabled(model.isBusy || !model.fileReady || model.hasJournal || newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
-                    Button(model.text("保存当前 Codex 登录", "Save the current Codex login")) { model.saveCurrent() }
+                    Button(model.text("保存当前账号", "Save current account")) { model.saveCurrent() }
                         .disabled(model.isBusy || !model.fileReady)
                     Text(model.text("添加后启用新账号，原账号保留在钥匙串中。浏览器若自动登录了原账号，请在官方页面改选目标账号。", "The new account becomes active; the previous one stays in Keychain. Select the intended account on the official page if your browser defaults to the old one."))
+                        .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text(model.text("添加或切换前，请先退出 Codex 桌面应用、终端中的 Codex 和编辑器里的 Codex。保留本工具打开即可。", "Before adding or switching accounts, quit the Codex desktop app, terminal clients and editor extensions. Keep this app open."))
                         .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }

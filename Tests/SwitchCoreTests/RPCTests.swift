@@ -7,7 +7,12 @@ final class RPCTests: StoreTestCase {
         let path = directory.appendingPathComponent("fake-codex")
         let source = """
         #!/usr/bin/env python3
-        import sys, json, time
+        import sys, json, time, argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument('-s', choices=['read-only', 'workspace-write', 'danger-full-access'])
+        parser.add_argument('-a', choices=['on-request', 'never'])
+        parser.add_argument('command', choices=['app-server'])
+        parser.parse_args()
         mode = '\(mode)'
         print('harmless startup line', flush=True)
         for line in sys.stdin:

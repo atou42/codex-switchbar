@@ -10,3 +10,5 @@ Not a notarized or Mac-verified release. Native compilation, Keychain, live OAut
 - Show the account/settings window on launch and when reopening the app, so access does not depend on finding the menu-bar item. Reuse the same window and account state from the menu.
 - Add two macOS launch/reopen regression tests.
 - Show a Dock icon while settings is open. Closing settings removes the Dock icon while keeping the menu-bar app running; reopening settings restores the Dock icon.
+- Install into /Applications so the app appears in Finder's Applications folder. Clarify first-time setup, required account names, adding multiple accounts, and reopening after quitting.
+- Fix official Codex 0.155.0 startup by replacing the removed `untrusted` approval option with `never`, retaining the read-only sandbox and account-only requests.

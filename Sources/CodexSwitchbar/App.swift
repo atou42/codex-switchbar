@@ -32,7 +32,7 @@ private struct SwitchMenuLabel: View {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     lazy var model = AppModel()
     var makeSettingsWindow: (() -> NSWindow)?
     private var settingsWindow: NSWindow?
@@ -54,10 +54,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             window.title = "Codex Switch"
             window.isReleasedWhenClosed = false
+            window.delegate = self
             window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
             window.center()
             settingsWindow = window
         }
+        NSApp.setActivationPolicy(.regular)
         settingsWindow?.deminiaturize(nil)
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
@@ -65,6 +67,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         showSettings()
         return false
+    }
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === settingsWindow else { return }
+        NSApp.setActivationPolicy(.accessory)
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }

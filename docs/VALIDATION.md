@@ -15,6 +15,10 @@ The original Linux delivery record below is retained as historical evidence; its
 
 The first installed build stayed running but reopening it did not show a window. Two native lifecycle regression tests reproduced the missing launch/reopen behavior before the fix. The app now owns one reusable settings window, opens it on launch and reopen, and shares its account model with the menu panel. All 52 tests passed after the fix. The rebuilt installed app's real “账号与设置” window was inspected through macOS accessibility; it showed the expected file-store setup prompt. No authentication setting was changed. Menu-bar placement and real account switching remain unverified.
 
+### Dock visibility — 2026-09-19
+
+Extended the native lifecycle tests to check regular activation while settings is open, accessory activation after closing, no app termination on close, and regular activation on reopen. The new Dock assertions failed before the change; all 52 tests passed afterward. Installed the rebuilt app, confirmed its settings window and running-app entry through computer use, clicked the real close button, and confirmed the entry disappeared while the installed process stayed running. Reopened settings afterward. The menu-bar scene remains independent of window closure; its screen placement has not been visually verified.
+
 Recorded 2026-09-19. This is an honest boundary between executed checks and work that requires a Mac/account. No real OpenAI credentials were available to or used by this build environment.
 
 ## Executed here

@@ -9,3 +9,4 @@ Not a notarized or Mac-verified release. Native compilation, Keychain, live OAut
 
 - Show the account/settings window on launch and when reopening the app, so access does not depend on finding the menu-bar item. Reuse the same window and account state from the menu.
 - Add two macOS launch/reopen regression tests.
+- Show a Dock icon while settings is open. Closing settings removes the Dock icon while keeping the menu-bar app running; reopening settings restores the Dock icon.

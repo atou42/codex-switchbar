@@ -14,7 +14,11 @@ final class AppLifecycleTests: XCTestCase {
             delegate.makeSettingsWindow = { window }
             delegate.applicationDidFinishLaunching(Notification(name: NSApplication.didFinishLaunchingNotification))
             XCTAssertTrue(window.isVisible, "Launching must show a usable entry even when the menu bar is crowded")
+            XCTAssertEqual(NSApp.activationPolicy(), .regular, "An open settings window must have a Dock icon")
             window.close()
+            XCTAssertFalse(window.isVisible)
+            XCTAssertEqual(NSApp.activationPolicy(), .accessory, "Closing settings must hide the Dock icon")
+            XCTAssertFalse(delegate.applicationShouldTerminateAfterLastWindowClosed(NSApp), "Closing settings must keep the menu-bar app running")
         }
     }
 
@@ -33,6 +37,7 @@ final class AppLifecycleTests: XCTestCase {
             let handled = lifecycle.applicationShouldHandleReopen?(NSApp, hasVisibleWindows: false)
             XCTAssertEqual(handled, false, "The delegate must handle reopening itself")
             XCTAssertTrue(window.isVisible, "Reopening must restore the settings window")
+            XCTAssertEqual(NSApp.activationPolicy(), .regular, "Reopening must restore the Dock icon")
             XCTAssertEqual(creations, 1, "Reopening must reuse the existing settings window")
             window.close()
         }

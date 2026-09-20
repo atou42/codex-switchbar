@@ -210,7 +210,7 @@ struct AntigravityMenuContent: View {
     }
 }
 
-private struct AntigravityQuotaGroupPicker: View {
+struct AntigravityQuotaGroupPicker: View {
     @Environment(\.providerAccent) private var accent
     @Binding var selection: String
     var chinese: Bool
@@ -220,10 +220,10 @@ private struct AntigravityQuotaGroupPicker: View {
                 option("gemini", title: "Gemini")
                 option("3p", title: chinese ? "其他模型" : "Other models")
             }.padding(3).background(Appearance.softFill).clipShape(RoundedRectangle(cornerRadius: 8))
-            if selection == "3p" {
-                Text(chinese ? "Claude、GPT-OSS 共用额度" : "Shared quota for Claude and GPT-OSS")
-                    .font(.system(size: 9)).foregroundStyle(.secondary)
-            }
+            Text(chinese ? "Claude、GPT-OSS 共用额度" : "Shared quota for Claude and GPT-OSS")
+                .font(.system(size: 9)).foregroundStyle(.secondary)
+                .opacity(selection == "3p" ? 1 : 0)
+                .accessibilityHidden(selection != "3p")
         }
     }
     private func option(_ id: String, title: String) -> some View {

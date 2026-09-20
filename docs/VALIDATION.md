@@ -119,3 +119,8 @@ System menu-bar pixel capture was not available from the app-window automation s
 - Before the fix, clicking the blank right side of Other models at window-relative (550, 334) left Gemini selected.
 - After installing the fix, the same position selected Other models and changed both quota values; clicking Gemini's blank left side at (64, 334) restored Gemini. These were actual native-window clicks, outside the text labels.
 - Both quota and provider segment labels now include the complete padded rectangle in their hit target. Native release build and 104 tests passed.
+
+## 2026-09-20 — Stable quota group layout
+
+- Added a native layout regression test for both panel widths (328/524 pt) and Chinese/English. Before the fix, all four cases failed: Gemini measured 30 pt and Other models 47 pt. After retaining the description's space, all four heights match and all 105 tests pass.
+- Rebuilt and installed the app. Actual settings-window screenshots before/after clicking Other models show the 5H/Weekly bars and the following CLI card at the same positions. Hidden descriptions are excluded from accessibility.

@@ -6,7 +6,7 @@
 
 [English](README_EN.md) · [安全边界](SECURITY.md) · [实现说明](docs/ARCHITECTURE.md) · [验收记录](docs/VALIDATION.md)
 
-> **0.1.0 源码预览版。** 50 项核心测试已分别在 Linux / Swift 6.2.1 和 macOS 26.2 / Swift 6.3.3 上通过。Apple Silicon 原生应用已编译、完成本地签名校验并安装启动；界面操作、真实钥匙串、OAuth 和账号切换仍待验收。这里提供完整源代码、Mac 安装脚本和 macOS CI，不把编译成功当成完整实机验收。
+> **0.2.0 实验版。** 新增 Antigravity CLI 个人 Google 账号管理。89 项自动化测试通过，macOS 原生构建、安装、界面识别现有账号、真实钥匙串保存、终端启动及运行中阻止切换已验证。Antigravity 第二账号登录和 A → B → A 真实切换仍待用户完成；额度暂未接入。具体边界见验收记录。
 
 ![界面交互预览，使用示例数据；不是 macOS 实机截图](docs/preview.png)
 
@@ -185,3 +185,36 @@ UI 参考 CodexBar 的紧凑额度面板、Codex Switcher 的账号列表；代�
 终端使用 `codex-switch add "名称" --device`，随后运行 `codex-switch status` 查看设备码与验证地址；默认或 `--browser` 使用网页登录。设备码只在登录进行时保存在内存并向本机当前用户显示，不写入账号列表。
 
 官方接口参考：[设备码登录](https://developers.openai.com/zh-Hans/docs/app-server#3b-使用-chatgpt-登录设备代码流程)。
+
+## Antigravity CLI（0.2.0 新增，实验支持）
+
+在窗口或菜单面板上方选择 **Antigravity CLI**。Codex 与 Antigravity 的账号列表、保存副本和操作记录分别存放。菜单栏仍保持紧凑；选择 Antigravity 时只显示图标，额度暂未接入，可在官方 `agy` 中运行 `/usage`。
+
+目前仅支持官方 CLI 的个人 Google 登录（`consumer`）。企业、GCP、WIF、Gemini API Key 等模式会明确拒绝，不尝试转换。此版本按已检查的本机 CLI 登录格式实现，不是 Google 提供的账号切换接口；升级 agy 后应复验。
+
+1. 已登录 agy：选择“保存当前账号”。默认完整显示邮箱。
+2. 添加另一账号：先退出 agy 及 Antigravity 客户端，输入名称，点击“添加账号并登录”。工具先把当前登录保存到钥匙串，再让官方 agy 打开登录。
+3. 在终端和浏览器完成登录，退出该 agy 会话，回到工具点击“已登录，保存账号”。登录中断时不会自动把旧登录写回；关闭 agy 后可取消添加，再手动切回已保存账号。
+4. 切换：退出相关客户端，点击目标账号，再打开官方 CLI。仍有客户端运行时会拒绝切换并提示，不会终止你的任务。
+
+终端使用：
+
+```sh
+codex-switch --provider antigravity start
+codex-switch --provider antigravity save "个人"
+codex-switch --provider antigravity add "工作"
+# 完成官方登录并退出 agy 后：
+codex-switch --provider antigravity finish
+codex-switch --provider antigravity list
+codex-switch --provider antigravity switch "个人"
+codex-switch --provider antigravity launch
+codex-switch --provider antigravity status
+codex-switch --provider antigravity cancel
+codex-switch --provider antigravity recover
+```
+
+`start` 打开本工具窗口，`launch` 打开官方 agy。`stop` 退出整个 Codex Switch，不结束 agy。`rename`、`remove` 同样支持 `--provider antigravity`。Antigravity 暂不支持 `--device`；不会暗中改用其他登录方式。首次打开终端时，macOS 可能询问是否允许本工具控制 Terminal。
+
+切换只更新官方登录存储和它的文件副本，不复制 HOME，不修改会话、模型、MCP 或技能。保存副本使用独立钥匙串服务 `cc.atou.codex-switchbar.antigravity`；账号信息和恢复标记位于 `~/Library/Application Support/Codex Switch/antigravity/`。官方存储被其他 Antigravity 客户端共享时，重启后这些客户端也可能采用新登录，因此写入前检查相关进程；桌面端账号切换不在本次支持承诺内。
+
+研究依据与实际验收边界见 [Antigravity 接入记录](docs/ANTIGRAVITY-RESEARCH.md) 和 [验收记录](docs/VALIDATION.md)。

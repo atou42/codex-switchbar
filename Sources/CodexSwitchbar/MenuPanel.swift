@@ -14,15 +14,26 @@ struct MenuPanel: View {
                 Image(systemName: "arrow.left.arrow.right").font(.system(size: 13, weight: .semibold))
                 Text("Codex Switch").font(.system(size: 13, weight: .semibold))
                 Spacer()
-                if model.working == "usage" {
+                if model.provider == .codex && model.working == "usage" {
                     ProgressView().controlSize(.small).frame(width: 28, height: 28)
-                } else {
+                } else if model.provider == .codex {
                     IconButton(symbol: "arrow.clockwise", label: model.text("刷新当前账号用量", "Refresh active account usage")) {
                         model.refreshUsage(manual: true)
                     }.disabled(!model.fileReady || model.isBusy || model.active == nil)
                 }
                 IconButton(symbol: "gearshape", label: model.text("账号与设置", "Accounts & Settings"), action: settings)
             }
+            Picker(model.text("工具", "Tool"), selection: $model.provider) {
+                Text("Codex").tag(AccountProvider.codex)
+                Text("Antigravity CLI").tag(AccountProvider.antigravity)
+            }.pickerStyle(.segmented)
+            if model.provider == .antigravity {
+                AntigravityMenuContent(model: model.antigravity, chinese: model.chinese, settings: settings)
+                HStack {
+                    Spacer()
+                    Button(model.text("退出 Codex Switch", "Quit Codex Switch")) { model.quit() }.buttonStyle(.plain)
+                }.font(.system(size: 11)).foregroundStyle(.secondary)
+            } else {
             if let account = model.active {
                 ActiveAccountCard(account: account, model: model)
             } else {
@@ -99,6 +110,7 @@ struct MenuPanel: View {
                     Button(model.text("退出 Codex Switch", "Quit Codex Switch")) { model.quit() }
                 } label: { Image(systemName: "ellipsis").frame(width: 20, height: 20) }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            }
             }
         }
         .padding(16).frame(width: 392)

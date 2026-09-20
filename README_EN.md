@@ -6,7 +6,7 @@
 
 macOS 13+ / Swift 5.9+ / SwiftUI / no package dependencies / MIT.
 
-**0.1.0 is a source preview, not a fully verified native release.** Fifty core tests passed on both Linux / Swift 6.2.1 and macOS 26.2 / Swift 6.3.3. The Apple Silicon app has been compiled, ad-hoc signature verified, installed, and launched. UI interactions, real Keychain access, login-item approval, and live OAuth/usage/account switching remain unverified. A Mac build workflow and a smoke-test checklist are included.
+**0.2.0 is experimental.** It adds personal Google-account management for Antigravity CLI. All 89 automated tests pass. Native macOS build/install, recognizing and saving an existing real login, launching official agy, and refusing a switch while agy runs have been checked. A second-account login and real A → B → A switching still require manual acceptance. Antigravity quota is not integrated. See the validation record for boundaries.
 
 ![Interactive design preview with synthetic data, not a native Mac screenshot](docs/preview.png)
 
@@ -95,3 +95,13 @@ The owner-only local socket checks both peers' user IDs. An occupied socket path
 Choose Browser or Device code above the account name. Device mode shows a one-time code, Copy code, and the official verification-page button. CLI: `codex-switch add "Work" --device`, then `codex-switch status` for the code and URL; the default or `--browser` uses browser login. Device failure never silently falls back to browser login. Codes are held only in memory during login and cleared on completion/cancellation.
 
 The menu bar shows only the icon and remaining percentage. Account names and details remain in the expanded panel. Hidden, missing, or stale quota produces an icon-only label.
+
+## Antigravity CLI (0.2.0 experimental)
+
+Choose **Antigravity CLI** in the settings window or menu panel. Its accounts and saved credentials are separate from Codex. The adapter supports the inspected personal Google (`consumer`) login format only. Enterprise/GCP/WIF and API-key modes are rejected. This is a local adapter, not an official Google account-switching API.
+
+Save the current login first. To add another account, exit Antigravity clients, enter a name and choose **Add account & sign in**. Complete Google's sign-in in the official `agy` Terminal session, exit agy, then choose **Signed in — save account**. A switch requires clients to be closed. Launch agy again to use the selected account. There is no automatic rotation, force-quit, custom OAuth refresh, or quota display.
+
+Use `codex-switch --provider antigravity` with `list`, `status`, `save [name]`, `add name`, `finish`, `switch name-or-ID`, `rename`, `remove`, `cancel`, `recover`, or `launch`. `start` opens this app's window; `launch` opens official agy in Terminal. `stop` quits the whole switcher. `--device` and `usage` fail explicitly for Antigravity. macOS may ask for permission to control Terminal.
+
+Authentication copies stay in a separate Keychain service; metadata and token-free journals live under the app's `antigravity` support directory. Settings, conversations, and HOME are not cloned or rewritten. Partial native-storage updates retain a recovery marker and never automatically replay a stale backup. See [research and compatibility limits](docs/ANTIGRAVITY-RESEARCH.md) and [validation](docs/VALIDATION.md). A real two-account Google login/switch cycle remains a separate manual acceptance step.

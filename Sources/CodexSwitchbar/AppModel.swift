@@ -13,6 +13,8 @@ struct PendingSwitch {
 
 @MainActor
 final class AppModel: ObservableObject {
+    @Published var provider: AccountProvider = .codex
+    let antigravity = AntigravityModel()
     @Published var accounts: [SavedAccount] = []
     @Published var activeID: UUID?
     @Published var unsavedLogin = false
@@ -52,7 +54,7 @@ final class AppModel: ObservableObject {
     var fileReady: Bool { configMode == .file }
     var executable: URL? { CodexExecutable.find(override: executablePath) }
     var barTitle: String {
-        MenuBarQuota.title(showPercent: showPercent, usage: active?.usage)
+        provider == .codex ? MenuBarQuota.title(showPercent: showPercent, usage: active?.usage) : ""
     }
 
     init() {

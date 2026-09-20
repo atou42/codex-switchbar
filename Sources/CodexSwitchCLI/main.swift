@@ -21,6 +21,17 @@ codex-switch remove "名称或ID"      移除本工具保存的副本，不注�
 codex-switch cancel                 取消登录或等待中的切换
 codex-switch usage                  发起当前账号的用量刷新
 
+默认管理 Codex；加 --provider antigravity 管理 Antigravity CLI 账号，例如：
+codex-switch --provider antigravity list
+codex-switch --provider antigravity save "工作"
+codex-switch --provider antigravity add "个人"
+codex-switch --provider antigravity switch "工作"
+codex-switch --provider antigravity status
+codex-switch --provider antigravity finish   登录后退出 agy，再保存新账号
+codex-switch --provider antigravity recover  核对未完成操作的当前登录
+codex-switch --provider antigravity launch   在终端打开官方 agy
+rename、remove 同样支持 --provider。Antigravity 登录使用官方网页登录。
+
 任意命令加 --json 可输出结构化结果。add、switch 和 usage 可能仍在进行中，
 用 status 查看后续结果。添加账号前请退出 Codex 客户端。未运行时会自动启动菜单栏应用。
 """
@@ -37,7 +48,7 @@ func run() throws -> Int32 {
     let running = NSRunningApplication.runningApplications(withBundleIdentifier: "cc.atou.codex-switchbar")
     var response: ControlResponse
     if running.isEmpty && ["stop", "status"].contains(command.action) {
-        response = ControlResponse(state: "stopped", message: "Codex Switch 已退出。")
+        response = ControlResponse(state: "stopped", message: "Codex Switch 已退出。", provider: command.provider)
     } else {
         if running.isEmpty {
             var pathSize: UInt32 = 0
@@ -65,7 +76,7 @@ func run() throws -> Int32 {
                 Thread.sleep(forTimeInterval: 0.05)
             }
             guard NSRunningApplication.runningApplications(withBundleIdentifier: "cc.atou.codex-switchbar").isEmpty else { throw SwitchError.timeout }
-            response = ControlResponse(state: "stopped", message: "Codex Switch 已退出。")
+            response = ControlResponse(state: "stopped", message: "Codex Switch 已退出。", provider: command.provider)
         }
     }
     if json {
@@ -78,7 +89,7 @@ func run() throws -> Int32 {
             print("验证地址：\(url)\n设备码：\(code)")
         }
         for account in response.accounts {
-            print("\(account.active ? "*" : " ") \(account.name)  \(account.id.uuidString)")
+            print("\(account.active ? "*" : " ") \(account.name)\(account.email.map { "  " + $0 } ?? "")  \(account.id.uuidString)")
             if command.action == "usage", let usage = account.usage, account.active {
                 let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                 print(String(decoding: try encoder.encode(usage), as: UTF8.self))

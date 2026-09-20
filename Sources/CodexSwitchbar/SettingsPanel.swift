@@ -22,14 +22,22 @@ struct SettingsPanel: View {
                 Text(model.text("关闭窗口后仍在顶部菜单栏运行。完全退出后，在“应用程序”中打开 Codex Switch。", "Closing this window keeps the app in the menu bar. After quitting, open Codex Switch from Applications."))
                     .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }.padding(24)
+            Picker(model.text("工具", "Tool"), selection: $model.provider) {
+                Text("Codex").tag(AccountProvider.codex)
+                Text("Antigravity CLI").tag(AccountProvider.antigravity)
+            }.pickerStyle(.segmented).padding(.horizontal, 24).padding(.bottom, 16)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    if let message = model.message { Notice(text: message, error: model.messageIsError) { model.message = nil } }
-                    sharedEnvironment
-                    accountManagement
+                    if model.provider == .codex {
+                        if let message = model.message { Notice(text: message, error: model.messageIsError) { model.message = nil } }
+                        sharedEnvironment
+                        accountManagement
+                    } else {
+                        AntigravityPanel(model: model.antigravity, chinese: model.chinese)
+                    }
                     preferences
-                    boundaries
+                    if model.provider == .codex { boundaries }
                 }.padding(24)
             }
         }
@@ -228,7 +236,7 @@ struct SettingsPanel: View {
                 .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Text(model.text("菜单栏显示的是共享文件中的账号，不代表每个已运行客户端的内存身份。共享历史也不等于工作与个人数据隔离。", "The menu bar shows the shared file's login, not every running client's in-memory identity. Shared history does not isolate work and personal data."))
                 .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Text("Codex Switch 0.1.0 · MIT · Native SwiftUI · No third-party dependencies")
+            Text("Codex Switch 0.2.0 · MIT · Native SwiftUI · No third-party dependencies")
                 .font(.system(size: 10)).foregroundStyle(.tertiary).padding(.top, 6)
         }
     }

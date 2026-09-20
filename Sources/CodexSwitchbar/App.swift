@@ -30,7 +30,7 @@ private struct SwitchMenuLabel: View {
                     .monospacedDigit()
             }
         }
-        .help(model.text("Codex 当前文件登录 · 点击查看", "Codex file login · Click for details"))
+        .help(model.provider == .codex ? model.text("Codex 当前文件登录 · 点击查看", "Codex file login · Click for details") : model.text("Antigravity CLI · 点击管理账号", "Antigravity CLI · Manage accounts"))
     }
 }
 

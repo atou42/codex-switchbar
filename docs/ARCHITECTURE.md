@@ -58,3 +58,9 @@ Automatic active reads are five minutes apart; manual reads are throttled to fif
 - `Presentation.swift` / views: formatting and native interface; no credential logic.
 
 The app lock is not a lock honored by Codex. Atomic replacement avoids partial reads, not every logical race. These distinctions must survive future refactors. See SECURITY.md for the threat model, and VALIDATION.md before describing the app as tested on a Mac.
+
+## Provider selection (0.2.0)
+
+`AccountProvider` routes local control commands, defaulting missing provider fields to Codex for compatibility. GUI selection controls which provider's panel is visible; it does not change credentials. The Codex store and RPC remain separate and unchanged. `AntigravityModel` owns the new provider's UI and control actions, using `AntigravityStore` for metadata/journals and an injected `AntigravityLiveLogin` for native storage. Registry and Keychain namespaces are distinct. Unsupported provider operations fail explicitly.
+
+Antigravity login deliberately uses the official interactive CLI in Terminal. The app records a pending login, opens `agy`, and waits for the user to finish authentication and exit agy before `finish` saves the result. The journal survives app restarts. `cancel` reconciles a resulting login or leaves a missing login missing; it never resurrects stale credentials. Existing-account login does not rename that account. Switches fail while Antigravity processes run; there is no background rotation, silent retry, or forced termination.

@@ -82,3 +82,18 @@ All 60 tests passed, including 5 local-transport checks and 3 command/selector/r
 All 66 tests passed. Tests cover browser/device response parsing, missing/invalid code and untrusted URL rejection, explicit CLI method selection, official-RPC device challenge/completion using a synthetic server, and compact percentage formatting including unknown/stale/disabled/zero states. The installed native UI showed both sign-in choices; selecting Device code was verified. A real official device challenge was obtained and cancelled using an isolated temporary Codex home, without completing authentication or changing the live home. End-to-end user authorization is still pending. The compact label is covered by formatting tests; desktop menu-bar pixels were not captured.
 
 During install, invoking `codex-switch start` by PATH while stopped exposed an existing executable-location bug. Replaced argv[0] path guessing with the OS-provided executable path; the same command then opened the installed app successfully.
+
+## 2026-09-20 — 0.2.0 Antigravity experimental adapter
+
+Executed on the local Mac:
+
+- `swift test`: **89 tests passed**, including separate provider parsing, existing Codex tests, Antigravity opaque-byte rotation, failed saved-vault writes, identity mismatch, corrupt registries, concurrent changes, process gates, cancellation without replay, official Keychain wire encoding, primary/file identity conflict and stale-file selection.
+- Regression checks were observed failing before correction: a fresh CLI installation with no official storage directory, and an incomplete login journal that previously could be cleared. Both now pass. Native adapter tests inject Keychain operations and use temporary directories; no synthetic credentials are written into the user's official login.
+- Native adapter dual-copy tests verify exact output bytes, a Keychain error leaving the file unchanged, and a file race after the Keychain update retaining both the updated Keychain and externally changed file with an explicit partial-update error.
+- Apple Silicon release build and ad-hoc signature verification passed. Installed at `/Applications/Codex Switch.app`.
+- Actual app accessibility inspection verified Codex / Antigravity CLI selectors, preserved existing Codex accounts/full emails, the real Antigravity login email, and a newly saved Antigravity “个人” account with the current marker. The native app successfully read official Keychain credentials and saved a copy in its separate Keychain namespace.
+- Installed CLI `save`, `list`, and `launch` for Antigravity returned successful results. `launch` opened the official agy process; while that process ran, `switch` returned `ok: false` with an instruction to close Antigravity. The test-launched agy was then interrupted; no pre-existing client was terminated.
+- Hash comparison before/after account read/save confirmed that Codex auth/config and Antigravity auth-file/settings bytes were unchanged by those operations. Launching the official CLI can subsequently perform its own normal credential refresh.
+- GUI contents were inspected directly. The computer-use tool does not allow Terminal inspection, so no claim is made that agy's terminal UI was visually verified.
+
+Still unverified: a second real Google account sign-in, A → B → A accepted by the official service, real mid-write interruption of official storage, different CLI versions, enterprise authentication (explicitly unsupported), desktop account switching, Intel execution, and notarization. Antigravity usage is explicitly unavailable. An installed/readable account is not evidence of a completed two-account acceptance test.

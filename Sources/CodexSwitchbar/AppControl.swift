@@ -6,11 +6,12 @@ extension AppDelegate {
     func control(_ raw: ControlCommand) -> ControlResponse {
         do {
             let command = try raw.validated()
-            if command.action == "start" { showSettings(); return snapshotResponse() }
+            if command.action == "start" { model.provider = command.provider; showSettings(); return command.provider == .antigravity ? model.antigravity.control(try ControlCommand(arguments: ["--provider", "antigravity", "status"])) : snapshotResponse() }
             if command.action == "stop" {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.model.quit() }
                 return ControlResponse(state: "stopping", message: "正在退出 Codex Switch。")
             }
+            if command.provider == .antigravity { return model.antigravity.control(command) }
             if command.action == "cancel" {
                 model.cancelPending(); model.cancelOperation()
                 return ControlResponse(state: model.isBusy ? "cancelling" : "idle", message: "已请求取消。")

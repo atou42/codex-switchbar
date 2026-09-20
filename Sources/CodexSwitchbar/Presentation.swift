@@ -5,8 +5,39 @@ import SwitchCore
 
 enum Appearance {
     static let accent = Color(red: 0.16, green: 0.55, blue: 0.43)
+    static let antigravity = Color(red: 0.56, green: 0.43, blue: 0.88)
+    static func color(for provider: AccountProvider) -> Color { provider == .codex ? accent : antigravity }
     static let softFill = Color.primary.opacity(0.045)
     static let separator = Color.primary.opacity(0.08)
+}
+
+private struct ProviderAccentKey: EnvironmentKey {
+    static let defaultValue = Appearance.accent
+}
+extension EnvironmentValues {
+    var providerAccent: Color {
+        get { self[ProviderAccentKey.self] }
+        set { self[ProviderAccentKey.self] = newValue }
+    }
+}
+
+struct ProviderPicker: View {
+    @Binding var selection: AccountProvider
+    var body: some View {
+        HStack(spacing: 3) {
+            option(.codex, title: "Codex")
+            option(.antigravity, title: "Antigravity CLI")
+        }.padding(3).background(Appearance.softFill).clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+    private func option(_ provider: AccountProvider, title: String) -> some View {
+        Button { selection = provider } label: {
+            Text(title).font(.system(size: 12, weight: .semibold))
+                .frame(maxWidth: .infinity).padding(.vertical, 7)
+                .foregroundStyle(selection == provider ? Color.white : Color.secondary)
+                .background(selection == provider ? Appearance.color(for: provider) : .clear)
+                .clipShape(RoundedRectangle(cornerRadius: 7))
+        }.buttonStyle(.plain).accessibilityAddTraits(selection == provider ? .isSelected : [])
+    }
 }
 
 enum UsagePresentation {
@@ -87,13 +118,14 @@ struct IconButton: View {
 
 @MainActor
 struct Notice: View {
+    @Environment(\.providerAccent) private var accent
     var text: String
     var error = false
     var dismiss: (() -> Void)?
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: error ? "exclamationmark.circle" : "checkmark.circle")
-                .foregroundStyle(error ? Color.orange : Appearance.accent).padding(.top, 1)
+                .foregroundStyle(error ? Color.orange : accent).padding(.top, 1)
             Text(text).font(.system(size: 11)).fixedSize(horizontal: false, vertical: true)
             if let dismiss {
                 Spacer(minLength: 0)
@@ -101,7 +133,7 @@ struct Notice: View {
                     .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Dismiss")
             }
         }
-        .padding(10).background((error ? Color.orange : Appearance.accent).opacity(0.07))
+        .padding(10).background((error ? Color.orange : accent).opacity(0.07))
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }

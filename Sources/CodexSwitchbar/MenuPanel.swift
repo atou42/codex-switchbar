@@ -21,21 +21,15 @@ struct MenuPanel: View {
                         model.refreshUsage(manual: true)
                     }.disabled(!model.fileReady || model.isBusy || model.active == nil)
                 }
+                if model.provider == .antigravity { AntigravityRefreshButton(model: model.antigravity, chinese: model.chinese) }
                 IconButton(symbol: "gearshape", label: model.text("账号与设置", "Accounts & Settings"), action: settings)
             }
-            Picker(model.text("工具", "Tool"), selection: $model.provider) {
-                Text("Codex").tag(AccountProvider.codex)
-                Text("Antigravity CLI").tag(AccountProvider.antigravity)
-            }.pickerStyle(.segmented)
+            ProviderPicker(selection: $model.provider)
             if model.provider == .antigravity {
-                AntigravityMenuContent(model: model.antigravity, chinese: model.chinese, settings: settings)
-                HStack {
-                    Spacer()
-                    Button(model.text("退出 Codex Switch", "Quit Codex Switch")) { model.quit() }.buttonStyle(.plain)
-                }.font(.system(size: 11)).foregroundStyle(.secondary)
+                AntigravityMenuContent(model: model.antigravity, chinese: model.chinese, maskEmails: model.maskEmails, settings: settings, quit: model.quit)
             } else {
             if let account = model.active {
-                ActiveAccountCard(account: account, model: model)
+                AccountUsageCard(account: account, usage: account.usage, provider: .codex, chinese: model.chinese, maskEmails: model.maskEmails) { EmptyView() }
             } else {
                 Card {
                     VStack(alignment: .leading, spacing: 12) {
@@ -88,7 +82,7 @@ struct MenuPanel: View {
                 ScrollView {
                     VStack(spacing: 3) {
                         ForEach(model.accounts) { account in
-                            AccountRow(account: account, model: model) { model.requestSwitch(account) }
+                            AccountRow(account: account, usage: account.usage, active: model.activeID == account.id, queued: model.pending?.id == account.id, chinese: model.chinese, maskEmails: model.maskEmails, disabled: model.isLogin || model.hasJournal) { model.requestSwitch(account) }
                         }
                     }
                 }
@@ -115,6 +109,8 @@ struct MenuPanel: View {
         }
         .padding(16).frame(width: 392)
         .background(Color(nsColor: .windowBackgroundColor))
+        .environment(\.providerAccent, Appearance.color(for: model.provider))
+        .tint(Appearance.color(for: model.provider))
         .onAppear { model.menuOpened() }
     }
     private func settings() {
@@ -123,69 +119,78 @@ struct MenuPanel: View {
 }
 
 @MainActor
-private struct ActiveAccountCard: View {
+struct AccountUsageCard<GroupSelector: View>: View {
+    @Environment(\.providerAccent) private var accent
     var account: SavedAccount
-    @ObservedObject var model: AppModel
+    var usage: UsageSnapshot?
+    var provider: AccountProvider
+    var chinese: Bool
+    var maskEmails: Bool
+    @ViewBuilder var groupSelector: GroupSelector
+    private func text(_ zh: String, _ en: String) -> String { chinese ? zh : en }
     var body: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
             Card {
                 VStack(alignment: .leading, spacing: 17) {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 5) {
-                            Text(model.text("当前凭证", "ACTIVE LOGIN"))
+                            Text(text("当前账号", "ACTIVE LOGIN"))
                                 .font(.system(size: 9, weight: .semibold)).tracking(1).foregroundStyle(.secondary)
                             Text(account.name).font(.system(size: 23, weight: .semibold)).lineLimit(1)
-                            Text(model.maskEmails ? AccountName.masked(account.email) : (account.email ?? "—"))
+                            Text(maskEmails ? AccountName.masked(account.email) : (account.email ?? "—"))
                                 .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
                         }
                         Spacer()
-                        Text((account.plan ?? "ChatGPT").uppercased())
+                        Text((provider == .codex ? (account.plan ?? "ChatGPT") : "Antigravity").uppercased())
                             .font(.system(size: 9, weight: .semibold)).tracking(0.3)
                             .padding(.horizontal, 8).padding(.vertical, 5)
-                            .foregroundStyle(Appearance.accent).background(Appearance.accent.opacity(0.10))
+                            .foregroundStyle(accent).background(accent.opacity(0.10))
                             .clipShape(Capsule())
                     }
+                    groupSelector
                     VStack(spacing: 14) {
-                        QuotaRow(window: account.usage?.main?.primary, secondary: false, chinese: model.chinese, now: context.date)
-                        QuotaRow(window: account.usage?.main?.secondary, secondary: true, chinese: model.chinese, now: context.date)
+                        QuotaRow(window: usage?.main?.primary, secondary: false, chinese: chinese, now: context.date, title: provider == .antigravity ? "5H" : nil, hideExpired: provider == .antigravity)
+                        QuotaRow(window: usage?.main?.secondary, secondary: true, chinese: chinese, now: context.date, title: provider == .antigravity ? "Weekly" : nil, hideExpired: provider == .antigravity)
                     }
-                    if let usage = account.usage, usage.buckets.count > 1 {
-                        DisclosureGroup(model.text("其他额度窗口", "Other quota windows")) {
+                    if provider == .codex, let usage, usage.buckets.count > 1 {
+                        DisclosureGroup(text("其他额度窗口", "Other quota windows")) {
                             VStack(spacing: 12) {
                                 ForEach(usage.buckets.filter { $0.id != usage.main?.id }) { bucket in
                                     VStack(alignment: .leading, spacing: 7) {
                                         Text(bucket.limitName ?? bucket.id).font(.system(size: 11, weight: .semibold))
-                                        if let window = bucket.primary { QuotaRow(window: window, secondary: false, chinese: model.chinese, now: context.date) }
-                                        if let window = bucket.secondary { QuotaRow(window: window, secondary: true, chinese: model.chinese, now: context.date) }
+                                        if let window = bucket.primary { QuotaRow(window: window, secondary: false, chinese: chinese, now: context.date) }
+                                        if let window = bucket.secondary { QuotaRow(window: window, secondary: true, chinese: chinese, now: context.date) }
                                     }
                                 }
                             }.padding(.top, 8)
                         }.font(.system(size: 11)).foregroundStyle(.secondary)
                     }
-                    VStack(spacing: 7) {
-                        Divider().opacity(0.5)
-                        HStack {
-                            Text(model.text("额外额度", "Extra credits")).foregroundStyle(.secondary)
-                            Spacer()
-                            Text(UsagePresentation.credits(account.usage?.main?.credits, chinese: model.chinese))
-                                .monospacedDigit()
-                        }.font(.system(size: 11))
-                        if let count = account.usage?.availableResetCredits {
+                    if provider == .codex {
+                        VStack(spacing: 7) {
+                            Divider().opacity(0.5)
                             HStack {
-                                Text(model.text("可用重置次数", "Available resets")).foregroundStyle(.secondary)
-                                Spacer(); Text("\(count)").monospacedDigit()
+                                Text(text("额外额度", "Extra credits")).foregroundStyle(.secondary)
+                                Spacer()
+                                Text(UsagePresentation.credits(usage?.main?.credits, chinese: chinese))
+                                    .monospacedDigit()
                             }.font(.system(size: 11))
+                            if let count = usage?.availableResetCredits {
+                                HStack {
+                                    Text(text("可用重置次数", "Available resets")).foregroundStyle(.secondary)
+                                    Spacer(); Text("\(count)").monospacedDigit()
+                                }.font(.system(size: 11))
+                            }
                         }
                     }
                     HStack(spacing: 4) {
-                        Circle().fill(account.usage?.isStale(at: context.date) == false ? Appearance.accent : Color.secondary.opacity(0.45))
+                        Circle().fill(usage?.isStale(at: context.date) == false ? accent : Color.secondary.opacity(0.45))
                             .frame(width: 4, height: 4)
-                        if let usage = account.usage {
-                            Text(model.text("官方 Codex · \(UsagePresentation.age(usage.fetchedAt, now: context.date, chinese: true))检查",
-                                            "Official Codex · Checked \(UsagePresentation.age(usage.fetchedAt, now: context.date, chinese: false))"))
+                        if let usage {
+                            Text(text("官方 \(provider == .codex ? "Codex" : "Antigravity") · \(UsagePresentation.age(usage.fetchedAt, now: context.date, chinese: true))检查",
+                                            "Official \(provider == .codex ? "Codex" : "Antigravity") · Checked \(UsagePresentation.age(usage.fetchedAt, now: context.date, chinese: false))"))
                             Spacer(minLength: 0)
-                            if usage.isStale(at: context.date) { Text(model.text("待刷新", "Stale")) }
-                        } else { Text(model.text("尚未读取用量 · 不会估算余额", "Usage not read yet · No estimated balance")) }
+                            if usage.isStale(at: context.date) { Text(text("待刷新", "Stale")) }
+                        } else { Text(text("尚未读取用量 · 不会估算余额", "Usage not read yet · No estimated balance")) }
                     }.font(.system(size: 9)).foregroundStyle(.secondary)
                 }
             }
@@ -194,20 +199,24 @@ private struct ActiveAccountCard: View {
 }
 
 @MainActor
-private struct QuotaRow: View {
+struct QuotaRow: View {
+    @Environment(\.providerAccent) private var accent
     var window: UsageWindow?
     var secondary: Bool
     var chinese: Bool
     var now: Date
-    private var percent: Double? { window?.remaining }
-    private var color: Color { (percent ?? 100) < 15 ? .orange : Appearance.accent }
+    var title: String? = nil
+    var hideExpired = false
+    private var percent: Double? { hideExpired && window?.resetIsPast(at: now) == true ? nil : window?.remaining }
+    private var percentageText: String { percent.map { "\(Int($0.rounded()))%" } ?? "—" }
+    private var color: Color { (percent ?? 100) < 15 ? .orange : accent }
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline) {
-                Text(UsagePresentation.windowTitle(window, secondary: secondary, chinese: chinese))
+                Text(title ?? UsagePresentation.windowTitle(window, secondary: secondary, chinese: chinese))
                     .font(.system(size: 12, weight: .medium))
                 Spacer()
-                Text(UsagePresentation.percent(window)).font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit()
+                Text(percentageText).font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit()
                 Text(chinese ? "剩余" : "left").font(.system(size: 10)).foregroundStyle(.secondary)
             }
             GeometryReader { geometry in
@@ -218,8 +227,8 @@ private struct QuotaRow: View {
                     }
                 }
             }.frame(height: 5)
-                .accessibilityLabel(UsagePresentation.windowTitle(window, secondary: secondary, chinese: chinese))
-                .accessibilityValue(UsagePresentation.percent(window))
+                .accessibilityLabel(title ?? UsagePresentation.windowTitle(window, secondary: secondary, chinese: chinese))
+                .accessibilityValue(percentageText)
             HStack {
                 Text(UsagePresentation.reset(window, now: now, chinese: chinese))
                 Spacer(minLength: 0)
@@ -234,47 +243,60 @@ private struct QuotaRow: View {
 
 @MainActor
 struct AccountRow: View {
+    @Environment(\.providerAccent) private var accent
     var account: SavedAccount
-    @ObservedObject var model: AppModel
+    var usage: UsageSnapshot?
+    var active: Bool
+    var queued = false
+    var antigravity = false
+    var chinese: Bool
+    var maskEmails: Bool
+    var disabled: Bool
+    private func text(_ zh: String, _ en: String) -> String { chinese ? zh : en }
     var action: () -> Void
     @State private var hovering = false
-    private var active: Bool { model.activeID == account.id }
-    private var queued: Bool { model.pending?.id == account.id }
+    private func quotaPair(_ usage: UsageSnapshot) -> String {
+        if antigravity {
+            let pair = MenuBarQuota.stacked(usage: usage, at: Date())
+            return "\(pair.fiveHour) / \(pair.weekly)"
+        }
+        return "\(UsagePresentation.percent(usage.main?.primary)) / \(UsagePresentation.percent(usage.main?.secondary))"
+    }
     var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
                 Text(String(account.name.prefix(1)).uppercased())
-                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(active ? Appearance.accent : Color.secondary)
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(active ? accent : Color.secondary)
                     .frame(width: 30, height: 30)
-                    .background(active ? Appearance.accent.opacity(0.11) : Color.primary.opacity(0.05))
+                    .background(active ? accent.opacity(0.11) : Color.primary.opacity(0.05))
                     .clipShape(RoundedRectangle(cornerRadius: 9))
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 6) {
                         Text(account.name).font(.system(size: 12, weight: active ? .semibold : .medium)).lineLimit(1)
-                        if active { Text(model.text("当前", "Active")).font(.system(size: 9)).foregroundStyle(Appearance.accent) }
+                        if active { Text(text("当前", "Active")).font(.system(size: 9)).foregroundStyle(accent) }
                     }
-                    if let usage = account.usage {
-                        Text("\(UsagePresentation.percent(usage.main?.primary)) / \(UsagePresentation.percent(usage.main?.secondary)) · " +
-                             (active ? model.text("短 / 长周期", "short / long") : model.text("缓存 · \(UsagePresentation.age(usage.fetchedAt, chinese: true))", "cached · \(UsagePresentation.age(usage.fetchedAt, chinese: false))")))
+                    if let usage {
+                        Text(quotaPair(usage) + " · " +
+                             (active ? (antigravity ? "5H / Weekly" : text("短 / 长周期", "short / long")) : text("缓存 · \(UsagePresentation.age(usage.fetchedAt, chinese: true))", "cached · \(UsagePresentation.age(usage.fetchedAt, chinese: false))")))
                             .font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
                     } else {
-                        Text(model.text("用量待查询", "Usage not checked yet")).font(.system(size: 9)).foregroundStyle(.secondary)
+                        Text(text("用量待查询", "Usage not checked yet")).font(.system(size: 9)).foregroundStyle(.secondary)
                     }
                 }
                 Spacer(minLength: 0)
                 Image(systemName: queued ? "clock" : (active ? "checkmark.circle.fill" : "arrow.right"))
                     .font(.system(size: active ? 15 : 11))
-                    .foregroundStyle(queued ? Color.orange : (active ? Appearance.accent : Color.secondary.opacity(hovering ? 1 : 0.35)))
+                    .foregroundStyle(queued ? Color.orange : (active ? accent : Color.secondary.opacity(hovering ? 1 : 0.35)))
             }
             .padding(.horizontal, 10).padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
-            .background(active ? Appearance.accent.opacity(0.045) : (hovering ? Appearance.softFill : .clear))
+            .background(active ? accent.opacity(0.045) : (hovering ? Appearance.softFill : .clear))
             .clipShape(RoundedRectangle(cornerRadius: 11))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain).disabled(model.isLogin || model.hasJournal)
+        .buttonStyle(.plain).disabled(disabled)
         .onHover { hovering = $0 }
-        .help((model.maskEmails ? AccountName.masked(account.email) : account.email ?? account.name) + " · " + (account.plan ?? "ChatGPT"))
-        .accessibilityLabel(model.text("切换至 \(account.name)", "Switch to \(account.name)"))
+        .help((maskEmails ? AccountName.masked(account.email) : account.email ?? account.name) + " · " + (antigravity ? "Antigravity" : (account.plan ?? "ChatGPT")))
+        .accessibilityLabel(text("切换至 \(account.name)", "Switch to \(account.name)"))
     }
 }
 #endif

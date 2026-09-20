@@ -107,3 +107,9 @@ Still unverified: a second real Google account sign-in, A → B → A accepted b
 - Final Apple Silicon release build and signature verification passed; installed at `/Applications/Codex Switch.app`. The app preserves the user's three saved Antigravity accounts and active identity. No existing Codex or agy client was terminated and no real account switch was performed for these display checks.
 
 System menu-bar pixel capture was not available from the app-window automation surface; the native image implementation and responsive real app were checked, while the settings window's quota numbers and group switching were directly inspected. Intel execution, notarization and repeated login authorization behavior under all macOS security states are not claimed.
+
+## 2026-09-20 — Shared provider presentation
+
+- Both menu panels now use the same account card, quota rows and selectable account rows. Provider accents are green for Codex and violet for Antigravity.
+- Installed native settings window was inspected visually. Switching Antigravity groups changed 5H/Weekly values and showed the explicit Claude/GPT-OSS shared-pool explanation; restored Gemini afterward. No account sign-in or credential switch was performed.
+- 104 automated tests passed. Native release build and source scan passed. The actual menu-bar popover could not be opened through the available accessibility surface; its shared card was inspected in the settings window.

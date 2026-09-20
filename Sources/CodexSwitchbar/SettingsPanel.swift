@@ -22,10 +22,7 @@ struct SettingsPanel: View {
                 Text(model.text("关闭窗口后仍在顶部菜单栏运行。完全退出后，在“应用程序”中打开 Codex Switch。", "Closing this window keeps the app in the menu bar. After quitting, open Codex Switch from Applications."))
                     .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }.padding(24)
-            Picker(model.text("工具", "Tool"), selection: $model.provider) {
-                Text("Codex").tag(AccountProvider.codex)
-                Text("Antigravity CLI").tag(AccountProvider.antigravity)
-            }.pickerStyle(.segmented).padding(.horizontal, 24).padding(.bottom, 16)
+            ProviderPicker(selection: $model.provider).padding(.horizontal, 24).padding(.bottom, 16)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
@@ -34,7 +31,7 @@ struct SettingsPanel: View {
                         sharedEnvironment
                         accountManagement
                     } else {
-                        AntigravityPanel(model: model.antigravity, chinese: model.chinese)
+                        AntigravityPanel(model: model.antigravity, chinese: model.chinese, maskEmails: model.maskEmails)
                     }
                     preferences
                     if model.provider == .codex { boundaries }
@@ -43,7 +40,8 @@ struct SettingsPanel: View {
         }
         .frame(width: 620, height: 690)
         .background(Color(nsColor: .windowBackgroundColor))
-        .tint(Appearance.accent)
+        .tint(Appearance.color(for: model.provider))
+        .environment(\.providerAccent, Appearance.color(for: model.provider))
         .onAppear { model.menuOpened() }
         .sheet(item: $renaming) { account in
             VStack(alignment: .leading, spacing: 16) {

@@ -188,7 +188,7 @@ UI 参考 CodexBar 的紧凑额度面板、Codex Switcher 的账号列表；代�
 
 ## Antigravity CLI（0.2.0 新增，实验支持）
 
-在窗口或菜单面板上方选择 **Antigravity CLI**。Codex 与 Antigravity 的账号列表、保存副本和操作记录分别存放。菜单栏仍保持紧凑；选择 Antigravity 时显示图标和上下两行百分比：上方 **5H**、下方 **Weekly**。展开面板可选择 Gemini 或 Claude / GPT 的独立额度组。每五分钟自动刷新，也可手动刷新；未知或过期时显示 `—`，不猜测余额。额度读取需要官方 `agy 1.1.11+`。
+在窗口或菜单面板上方选择 **Antigravity CLI**。Codex 与 Antigravity 的账号列表、保存副本和操作记录分别存放。菜单栏仍保持紧凑；选择 Antigravity 时显示图标和上下两行百分比：上方 **5H**、下方 **Weekly**。两个面板使用相同的账号卡片、额度进度条和账号列表，Codex 为绿色，Antigravity 为紫色。展开 Antigravity 面板可选择「Gemini」或「其他模型」；后者是 Claude、GPT-OSS 的共享额度，与 Codex 账号额度无关。每五分钟自动刷新，也可手动刷新；未知或过期时显示 `—`，不猜测余额。额度读取需要官方 `agy 1.1.11+`。
 
 目前仅支持官方 CLI 的个人 Google 登录（`consumer`）。企业、GCP、WIF、Gemini API Key 等模式会明确拒绝，不尝试转换。此版本按已检查的本机 CLI 登录格式实现，不是 Google 提供的账号切换接口；升级 agy 后应复验。
 

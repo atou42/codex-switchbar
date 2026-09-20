@@ -228,7 +228,11 @@ struct AntigravityQuotaGroupPicker: View {
     }
     private func option(_ id: String, title: String) -> some View {
         Button { selection = id } label: {
-            Text(title).font(.system(size: 11, weight: .medium))
+            HStack(spacing: 5) {
+                Image(nsImage: AntigravityMark.image(groupID: id))
+                    .resizable().frame(width: 12, height: 12).accessibilityHidden(true)
+                Text(title)
+            }.font(.system(size: 11, weight: .medium))
                 .frame(maxWidth: .infinity).padding(.vertical, 5)
                 .foregroundStyle(selection == id ? accent : Color.secondary)
                 .background(selection == id ? accent.opacity(0.12) : .clear)

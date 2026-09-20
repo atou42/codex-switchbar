@@ -124,3 +124,9 @@ System menu-bar pixel capture was not available from the app-window automation s
 
 - Added a native layout regression test for both panel widths (328/524 pt) and Chinese/English. Before the fix, all four cases failed: Gemini measured 30 pt and Other models 47 pt. After retaining the description's space, all four heights match and all 105 tests pass.
 - Rebuilt and installed the app. Actual settings-window screenshots before/after clicking Other models show the 5H/Weekly bars and the following CLI card at the same positions. Hidden descriptions are excluded from accessibility.
+
+## 2026-09-20 — Provider and group status marks
+
+- Codex keeps its arrows. Antigravity uses one upward A-shaped mark: outline for Gemini, solid for the shared pool. Matching marks appear in the group selector. Status image widths remain 51 pt with quotas and 18 pt without them.
+- Added native image tests proving the groups produce different pixels even with identical quotas, switching back restores the original image, and dimensions/template behavior remain unchanged. All 106 tests and the native release build passed.
+- Installed app's group selector was inspected visually and both groups were clicked successfully. Direct menu-bar screenshot inspection remains unavailable through the current app accessibility surface.

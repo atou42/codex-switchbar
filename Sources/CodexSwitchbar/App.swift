@@ -47,24 +47,24 @@ private struct AntigravityMenuLabel: View {
         let quota = MenuBarQuota.stacked(usage: model.activeUsage, at: model.quotaDate)
         let waiting = model.loginPending || model.hasJournal
         Image(nsImage: AntigravityStatusImage.make(fiveHour: quota.fiveHour, weekly: quota.weekly,
-                                                  showPercent: showPercent, waiting: waiting))
-            .accessibilityLabel(showPercent ? "Antigravity 5H \(quota.fiveHour), Weekly \(quota.weekly)" : "Antigravity")
+                                                  showPercent: showPercent, waiting: waiting, groupID: model.usageGroupID))
+            .accessibilityLabel("Antigravity · \(model.usageGroupID == "gemini" ? "Gemini" : "Other models")" + (showPercent ? " · 5H \(quota.fiveHour), Weekly \(quota.weekly)" : ""))
     }
 }
 
 /// MenuBarExtra extracts an image for its status item. A native template keeps the
 /// label stable; layout-driven TimelineView/VStack labels can trigger host update loops.
 @MainActor
-private enum AntigravityStatusImage {
+enum AntigravityStatusImage {
     private static var cachedKey = ""
     private static var cachedImage: NSImage?
 
-    static func make(fiveHour: String, weekly: String, showPercent: Bool, waiting: Bool) -> NSImage {
-        let key = "\(fiveHour)|\(weekly)|\(showPercent)|\(waiting)"
+    static func make(fiveHour: String, weekly: String, showPercent: Bool, waiting: Bool, groupID: String) -> NSImage {
+        let key = "\(fiveHour)|\(weekly)|\(showPercent)|\(waiting)|\(groupID)"
         if key == cachedKey, let cachedImage { return cachedImage }
         let size = NSSize(width: showPercent ? 51 : 18, height: 22)
-        let symbol = NSImage(systemSymbolName: waiting ? "clock.arrow.circlepath" : "arrow.left.arrow.right",
-                             accessibilityDescription: nil)
+        let symbol = waiting ? NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: nil)
+            : AntigravityMark.image(groupID: groupID)
         let image = NSImage(size: size, flipped: false) { _ in
             symbol?.draw(in: NSRect(x: 1, y: 3, width: 16, height: 16))
             if showPercent {

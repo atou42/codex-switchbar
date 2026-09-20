@@ -41,6 +41,38 @@ struct ProviderPicker: View {
     }
 }
 
+/// One upward A-shaped silhouette, outlined for Gemini and filled for the shared pool.
+@MainActor
+enum AntigravityMark {
+    private static let outline = make(filled: false)
+    private static let solid = make(filled: true)
+
+    static func image(groupID: String) -> NSImage {
+        groupID == "3p" ? solid : outline
+    }
+
+    private static func make(filled: Bool) -> NSImage {
+        let image = NSImage(size: NSSize(width: 16, height: 16), flipped: false) { _ in
+            let path = NSBezierPath()
+            path.move(to: NSPoint(x: 8, y: 14))
+            path.line(to: NSPoint(x: 14, y: 2))
+            path.line(to: NSPoint(x: 8, y: 5))
+            path.line(to: NSPoint(x: 2, y: 2))
+            path.close()
+            NSColor.black.set()
+            if filled { path.fill() }
+            else {
+                path.lineWidth = 1.5
+                path.lineJoinStyle = .round
+                path.stroke()
+            }
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
+}
+
 enum UsagePresentation {
     static func percent(_ window: UsageWindow?) -> String {
         window?.remaining.map { "\(Int($0.rounded()))%" } ?? "—"

@@ -66,9 +66,9 @@ enum AntigravityMark {
                 path.lineJoinStyle = .round
                 path.stroke()
                 // Keep a transparent gap so the badge stays legible on either menu-bar theme.
-                NSRect(x: 9, y: 0, width: 7, height: 8).fill(using: .clear)
-                ("G" as NSString).draw(at: NSPoint(x: 9.5, y: -0.5), withAttributes: [
-                    .font: NSFont.systemFont(ofSize: 8, weight: .bold),
+                NSRect(x: 8, y: 0, width: 8, height: 9).fill(using: .clear)
+                ("G" as NSString).draw(at: NSPoint(x: 8.5, y: -0.5), withAttributes: [
+                    .font: NSFont.systemFont(ofSize: 9.5, weight: .heavy),
                     .foregroundColor: NSColor.black
                 ])
             }

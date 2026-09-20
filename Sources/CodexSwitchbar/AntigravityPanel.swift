@@ -233,6 +233,7 @@ private struct AntigravityQuotaGroupPicker: View {
                 .foregroundStyle(selection == id ? accent : Color.secondary)
                 .background(selection == id ? accent.opacity(0.12) : .clear)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
+                .contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityAddTraits(selection == id ? .isSelected : [])
     }
 }

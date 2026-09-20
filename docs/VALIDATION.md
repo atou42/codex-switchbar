@@ -113,3 +113,9 @@ System menu-bar pixel capture was not available from the app-window automation s
 - Both menu panels now use the same account card, quota rows and selectable account rows. Provider accents are green for Codex and violet for Antigravity.
 - Installed native settings window was inspected visually. Switching Antigravity groups changed 5H/Weekly values and showed the explicit Claude/GPT-OSS shared-pool explanation; restored Gemini afterward. No account sign-in or credential switch was performed.
 - 104 automated tests passed. Native release build and source scan passed. The actual menu-bar popover could not be opened through the available accessibility surface; its shared card was inspected in the settings window.
+
+## 2026-09-20 — Full segment hit targets
+
+- Before the fix, clicking the blank right side of Other models at window-relative (550, 334) left Gemini selected.
+- After installing the fix, the same position selected Other models and changed both quota values; clicking Gemini's blank left side at (64, 334) restored Gemini. These were actual native-window clicks, outside the text labels.
+- Both quota and provider segment labels now include the complete padded rectangle in their hit target. Native release build and 104 tests passed.

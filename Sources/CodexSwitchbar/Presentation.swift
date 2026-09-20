@@ -36,6 +36,7 @@ struct ProviderPicker: View {
                 .foregroundStyle(selection == provider ? Color.white : Color.secondary)
                 .background(selection == provider ? Appearance.color(for: provider) : .clear)
                 .clipShape(RoundedRectangle(cornerRadius: 7))
+                .contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityAddTraits(selection == provider ? .isSelected : [])
     }
 }

@@ -13,7 +13,12 @@ struct PendingSwitch {
 
 @MainActor
 final class AppModel: ObservableObject {
-    @Published var provider: AccountProvider = .codex
+    @Published var provider: AccountProvider = AccountProvider(rawValue:UserDefaults.standard.string(forKey:"selectedProvider") ?? "codex") ?? .codex {
+        didSet {
+            UserDefaults.standard.set(provider.rawValue,forKey:"selectedProvider")
+            if provider == .antigravity { antigravity.refresh(); if automaticUsage { antigravity.refreshUsage() } }
+        }
+    }
     let antigravity = AntigravityModel()
     @Published var accounts: [SavedAccount] = []
     @Published var activeID: UUID?
@@ -106,10 +111,14 @@ final class AppModel: ObservableObject {
     func menuOpened() {
         refreshLocal()
         if !isBusy { do { clients = try ProcessSafety.scan() } catch { show(error) } }
-        if automaticUsage { refreshUsage() }
+        if automaticUsage {
+            if provider == .antigravity { antigravity.refreshUsage() } else { refreshUsage() }
+        }
     }
     private func tick() {
         guard !shuttingDown else { return }
+        antigravity.updateQuotaClock()
+        if provider == .antigravity && automaticUsage { antigravity.refreshUsage() }
         if !isBusy && Date().timeIntervalSince(lastLocalCheck) >= 30 { refreshLocal() }
         if pending != nil && !isBusy { attemptPending() }
         if automaticUsage && pending == nil && Date().timeIntervalSince(lastUsageAttempt) >= 300 { refreshUsage() }
@@ -282,7 +291,7 @@ final class AppModel: ObservableObject {
         shuttingDown = true; heartbeat?.invalidate()
         pending = nil; cancellation?.cancel()
         let task = operationTask
-        Task { await task?.value; NSApp.terminate(nil) }
+        Task { await antigravity.shutdown(); await task?.value; NSApp.terminate(nil) }
     }
     func setLaunchAtLogin(_ enabled: Bool) {
         do {

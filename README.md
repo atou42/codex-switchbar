@@ -6,7 +6,7 @@
 
 [English](README_EN.md) · [安全边界](SECURITY.md) · [实现说明](docs/ARCHITECTURE.md) · [验收记录](docs/VALIDATION.md)
 
-> **0.2.0 实验版。** 新增 Antigravity CLI 个人 Google 账号管理。89 项自动化测试通过，macOS 原生构建、安装、界面识别现有账号、真实钥匙串保存、终端启动及运行中阻止切换已验证。Antigravity 第二账号登录和 A → B → A 真实切换仍待用户完成；额度暂未接入。具体边界见验收记录。
+> **0.2.1 实验版。** 支持 Antigravity CLI 个人 Google 账号管理及官方额度读取。104 项自动化测试通过，macOS 原生构建、安装、界面识别现有账号、真实钥匙串保存、终端启动及运行中阻止切换已验证。Antigravity 第二账号登录和 A → B → A 真实切换仍需独立验收。具体边界见验收记录。
 
 ![界面交互预览，使用示例数据；不是 macOS 实机截图](docs/preview.png)
 
@@ -188,7 +188,7 @@ UI 参考 CodexBar 的紧凑额度面板、Codex Switcher 的账号列表；代�
 
 ## Antigravity CLI（0.2.0 新增，实验支持）
 
-在窗口或菜单面板上方选择 **Antigravity CLI**。Codex 与 Antigravity 的账号列表、保存副本和操作记录分别存放。菜单栏仍保持紧凑；选择 Antigravity 时只显示图标，额度暂未接入，可在官方 `agy` 中运行 `/usage`。
+在窗口或菜单面板上方选择 **Antigravity CLI**。Codex 与 Antigravity 的账号列表、保存副本和操作记录分别存放。菜单栏仍保持紧凑；选择 Antigravity 时显示图标和上下两行百分比：上方 **5H**、下方 **Weekly**。展开面板可选择 Gemini 或 Claude / GPT 的独立额度组。每五分钟自动刷新，也可手动刷新；未知或过期时显示 `—`，不猜测余额。额度读取需要官方 `agy 1.1.11+`。
 
 目前仅支持官方 CLI 的个人 Google 登录（`consumer`）。企业、GCP、WIF、Gemini API Key 等模式会明确拒绝，不尝试转换。此版本按已检查的本机 CLI 登录格式实现，不是 Google 提供的账号切换接口；升级 agy 后应复验。
 
@@ -213,8 +213,14 @@ codex-switch --provider antigravity cancel
 codex-switch --provider antigravity recover
 ```
 
-`start` 打开本工具窗口，`launch` 打开官方 agy。`stop` 退出整个 Codex Switch，不结束 agy。`rename`、`remove` 同样支持 `--provider antigravity`。Antigravity 暂不支持 `--device`；不会暗中改用其他登录方式。首次打开终端时，macOS 可能询问是否允许本工具控制 Terminal。
+`start` 打开本工具窗口，`launch` 打开官方 agy。`stop` 退出整个 Codex Switch，不结束 agy。`rename`、`remove` 同样支持 `--provider antigravity`。`codex-switch --provider antigravity usage` 读取当前账号的官方额度，随后用 `status --json` 查看完成后的结果。Antigravity 暂不支持 `--device`；不会暗中改用其他登录方式。首次打开终端时，macOS 可能询问是否允许本工具控制 Terminal。
 
 切换只更新官方登录存储和它的文件副本，不复制 HOME，不修改会话、模型、MCP 或技能。保存副本使用独立钥匙串服务 `cc.atou.codex-switchbar.antigravity`；账号信息和恢复标记位于 `~/Library/Application Support/Codex Switch/antigravity/`。官方存储被其他 Antigravity 客户端共享时，重启后这些客户端也可能采用新登录，因此写入前检查相关进程；桌面端账号切换不在本次支持承诺内。
 
 研究依据与实际验收边界见 [Antigravity 接入记录](docs/ANTIGRAVITY-RESEARCH.md) 和 [验收记录](docs/VALIDATION.md)。
+
+## 钥匙串授权（0.2.1）
+
+Antigravity 的共享登录记录改用与官方 agy 相同的 Apple 钥匙串访问程序。正常添加新账号时，不再因为读取方变成 Codex Switch 而每次要求重新授权。没有扩大钥匙串权限，也没有改成明文保存。
+
+macOS 仍决定最终授权：钥匙串锁定、此前选择“仅允许一次”、旧保存副本首次访问或本地签名构建升级，都可能再次询问。不能承诺所有系统状态下永久只弹一次。

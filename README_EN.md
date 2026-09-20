@@ -6,7 +6,7 @@
 
 macOS 13+ / Swift 5.9+ / SwiftUI / no package dependencies / MIT.
 
-**0.2.0 is experimental.** It adds personal Google-account management for Antigravity CLI. All 89 automated tests pass. Native macOS build/install, recognizing and saving an existing real login, launching official agy, and refusing a switch while agy runs have been checked. A second-account login and real A → B → A switching still require manual acceptance. Antigravity quota is not integrated. See the validation record for boundaries.
+**0.2.1 is experimental.** It adds personal Google-account management for Antigravity CLI. All 104 automated tests pass. Native macOS build/install, recognizing and saving an existing real login, launching official agy, and refusing a switch while agy runs have been checked. A second-account login and real A → B → A switching still require manual acceptance. Antigravity 5h/weekly quota is read through official agy 1.1.11+ without model turns. See the validation record for boundaries.
 
 ![Interactive design preview with synthetic data, not a native Mac screenshot](docs/preview.png)
 
@@ -100,8 +100,10 @@ The menu bar shows only the icon and remaining percentage. Account names and det
 
 Choose **Antigravity CLI** in the settings window or menu panel. Its accounts and saved credentials are separate from Codex. The adapter supports the inspected personal Google (`consumer`) login format only. Enterprise/GCP/WIF and API-key modes are rejected. This is a local adapter, not an official Google account-switching API.
 
-Save the current login first. To add another account, exit Antigravity clients, enter a name and choose **Add account & sign in**. Complete Google's sign-in in the official `agy` Terminal session, exit agy, then choose **Signed in — save account**. A switch requires clients to be closed. Launch agy again to use the selected account. There is no automatic rotation, force-quit, custom OAuth refresh, or quota display.
+Save the current login first. To add another account, exit Antigravity clients, enter a name and choose **Add account & sign in**. Complete Google's sign-in in the official `agy` Terminal session, exit agy, then choose **Signed in — save account**. A switch requires clients to be closed. Launch agy again to use the selected account. There is no automatic rotation, force-quit, or custom OAuth refresh. The menu bar stacks 5h above weekly remaining percentages. Choose the independent Gemini or Claude/GPT group in the expanded panel. Missing/stale values display an em dash.
 
-Use `codex-switch --provider antigravity` with `list`, `status`, `save [name]`, `add name`, `finish`, `switch name-or-ID`, `rename`, `remove`, `cancel`, `recover`, or `launch`. `start` opens this app's window; `launch` opens official agy in Terminal. `stop` quits the whole switcher. `--device` and `usage` fail explicitly for Antigravity. macOS may ask for permission to control Terminal.
+Use `codex-switch --provider antigravity` with `list`, `status`, `save [name]`, `add name`, `finish`, `switch name-or-ID`, `rename`, `remove`, `cancel`, `recover`, or `launch`. `start` opens this app's window; `launch` opens official agy in Terminal. `stop` quits the whole switcher. `usage` requests current-account quota; check `status --json` for the asynchronous result. `--device` fails explicitly for Antigravity. macOS may ask for permission to control Terminal.
 
 Authentication copies stay in a separate Keychain service; metadata and token-free journals live under the app's `antigravity` support directory. Settings, conversations, and HOME are not cloned or rewritten. Partial native-storage updates retain a recovery marker and never automatically replay a stale backup. See [research and compatibility limits](docs/ANTIGRAVITY-RESEARCH.md) and [validation](docs/VALIDATION.md). A real two-account Google login/switch cycle remains a separate manual acceptance step.
+
+The shared Antigravity Keychain item now uses the same Apple-signed accessor as official agy, avoiding repeated cross-application permission requests when each login creates a new item. No ACLs are broadened. Locked Keychains, one-time grants, old private account copies, and ad-hoc rebuilds can still require macOS approval.

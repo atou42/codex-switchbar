@@ -33,6 +33,10 @@ struct AntigravityPanel: View {
                         Text(text("当前登录：", "Current login: ") + email)
                             .font(.system(size: 12)).textSelection(.enabled)
                     }
+                    AntigravityQuotaGroupPicker(selection: $model.usageGroupID, chinese: chinese)
+                    AntigravityQuotaSummary(usage: model.activeUsage, chinese: chinese)
+                    Button(text("刷新额度", "Refresh quota")) { model.refreshUsage(manual: true) }
+                        .disabled(model.refreshingUsage || model.loginPending || model.hasJournal)
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }
             Card {
@@ -42,7 +46,7 @@ struct AntigravityPanel: View {
                         .font(.system(size: 12)).foregroundStyle(.secondary)
                     ForEach(model.accounts) { account in
                         HStack {
-                            AntigravityAccountLabel(account: account, active: model.activeID == account.id, chinese: chinese)
+                            AntigravityAccountLabel(account: account, active: model.activeID == account.id, chinese: chinese, usageGroupID: model.usageGroupID)
                             Spacer()
                             if model.activeID != account.id {
                                 Button(text("切换", "Switch")) { model.switchAccount(account) }.controlSize(.small)
@@ -81,10 +85,10 @@ struct AntigravityPanel: View {
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }
-            Text(text("账号副本保存在 macOS 钥匙串。Antigravity CLI 的额度暂不显示。", "Saved account copies stay in macOS Keychain. Antigravity CLI quota is not displayed yet."))
+            Text(text("账号副本保存在 macOS 钥匙串。顶部上方为 5H，下方为 Weekly；未提供或已过期的数据显示 —。", "Saved account copies stay in macOS Keychain. The menu bar shows 5H above Weekly; unavailable or expired values show —."))
                 .font(.system(size: 11)).foregroundStyle(.secondary)
         }
-        .onAppear { model.refresh() }
+        .onAppear { model.refresh(); model.refreshUsage() }
         .sheet(item: $renaming) { account in
             VStack(alignment: .leading, spacing: 16) {
                 Text(text("修改账号名称", "Rename account")).font(.headline)
@@ -123,6 +127,8 @@ struct AntigravityMenuContent: View {
             if let email = model.liveEmail {
                 Text(text("当前登录：", "Current login: ") + email).font(.system(size: 11)).textSelection(.enabled)
             }
+            AntigravityQuotaGroupPicker(selection: $model.usageGroupID, chinese: chinese)
+            AntigravityQuotaSummary(usage: model.activeUsage, chinese: chinese)
             if model.accounts.isEmpty {
                 Text(text("还没有保存 Antigravity 账号。打开账号设置开始添加。", "No saved Antigravity accounts. Open account settings to add one."))
                     .font(.system(size: 12)).foregroundStyle(.secondary)
@@ -131,7 +137,7 @@ struct AntigravityMenuContent: View {
                     VStack(spacing: 10) {
                         ForEach(model.accounts) { account in
                             HStack {
-                                AntigravityAccountLabel(account: account, active: model.activeID == account.id, chinese: chinese)
+                                AntigravityAccountLabel(account: account, active: model.activeID == account.id, chinese: chinese, usageGroupID: model.usageGroupID)
                                 Spacer()
                                 if model.activeID != account.id {
                                     Button(text("切换", "Switch")) { model.switchAccount(account) }.controlSize(.small)
@@ -140,7 +146,7 @@ struct AntigravityMenuContent: View {
                             }
                         }
                     }
-                }.frame(height: min(CGFloat(model.accounts.count) * 54, 216))
+                }.frame(height: min(CGFloat(model.accounts.count) * 82, 260))
             }
             if model.loginPending || model.hasJournal {
                 Button(text("继续处理未完成的登录", "Review unfinished sign-in"), action: settings)
@@ -151,11 +157,24 @@ struct AntigravityMenuContent: View {
                 Spacer()
                 Button(text("打开 CLI", "Open CLI")) { model.launch() }
                     .disabled(model.executable == nil || (model.hasJournal && !model.loginPending))
-                IconButton(symbol: "arrow.clockwise", label: text("刷新", "Refresh")) { model.refresh() }
+                IconButton(symbol: "arrow.clockwise", label: text("刷新额度", "Refresh quota")) { model.refresh(); model.refreshUsage(manual: true) }
+                    .disabled(model.refreshingUsage || model.loginPending || model.hasJournal)
             }
             Text(text("切换前请退出所有 agy 会话。", "Close all agy sessions before switching."))
                 .font(.system(size: 10)).foregroundStyle(.secondary)
-        }.onAppear { model.refresh() }
+        }.onAppear { model.refresh(); model.refreshUsage() }
+    }
+}
+
+private struct AntigravityQuotaGroupPicker: View {
+    @Binding var selection: String
+    var chinese: Bool
+    var body: some View {
+        Picker(chinese ? "额度分组" : "Quota group", selection: $selection) {
+            Text("Gemini").tag("gemini")
+            Text("Claude / GPT").tag("3p")
+        }
+        .pickerStyle(.segmented)
     }
 }
 
@@ -163,6 +182,7 @@ private struct AntigravityAccountLabel: View {
     var account: SavedAccount
     var active: Bool
     var chinese: Bool
+    var usageGroupID: String
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack {
@@ -170,6 +190,32 @@ private struct AntigravityAccountLabel: View {
                 if active { Text(chinese ? "当前" : "Active").font(.system(size: 10)).foregroundStyle(Appearance.accent) }
             }
             Text(account.email ?? "—").font(.system(size: 11)).foregroundStyle(.secondary).textSelection(.enabled)
+            if !active, let usage = account.usage {
+                AntigravityQuotaSummary(usage: UsageSnapshot(fetchedAt: usage.fetchedAt,
+                    buckets: usage.buckets.filter { $0.id == usageGroupID }), chinese: chinese, cached: true)
+            }
+        }
+    }
+}
+
+private struct AntigravityQuotaSummary: View {
+    var usage: UsageSnapshot?
+    var chinese: Bool
+    var cached = false
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            let quota = MenuBarQuota.stacked(usage: usage, at: context.date)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("5H  \(quota.fiveHour)    Weekly  \(quota.weekly)")
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                if let usage {
+                    HStack(spacing: 3) {
+                        Text(cached ? (chinese ? "缓存 ·" : "Cached ·") : (chinese ? "更新于" : "Updated"))
+                        Text(usage.fetchedAt, style: .date)
+                        Text(usage.fetchedAt, style: .time)
+                    }.font(.system(size: 10)).foregroundStyle(.secondary)
+                }
+            }
         }
     }
 }

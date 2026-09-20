@@ -236,7 +236,7 @@ struct SettingsPanel: View {
                 .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Text(model.text("菜单栏显示的是共享文件中的账号，不代表每个已运行客户端的内存身份。共享历史也不等于工作与个人数据隔离。", "The menu bar shows the shared file's login, not every running client's in-memory identity. Shared history does not isolate work and personal data."))
                 .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Text("Codex Switch 0.2.0 · MIT · Native SwiftUI · No third-party dependencies")
+            Text("Codex Switch 0.2.1 · MIT · Native SwiftUI · No third-party dependencies")
                 .font(.system(size: 10)).foregroundStyle(.tertiary).padding(.top, 6)
         }
     }

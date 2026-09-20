@@ -5,6 +5,22 @@ import SwitchCore
 
 @MainActor
 final class AntigravityModel: ObservableObject {
+    @Published var refreshingUsage = false
+    @Published var quotaDate = Date()
+    func updateQuotaClock() {
+        if Date().timeIntervalSince(quotaDate) >= 30 { quotaDate = Date() }
+    }
+    @Published var usageGroupID: String = UserDefaults.standard.string(forKey:"antigravityUsageGroup") ?? "gemini" {
+        didSet { UserDefaults.standard.set(usageGroupID,forKey:"antigravityUsageGroup") }
+    }
+    private var usageCancellation: CancellationFlag?
+    private var usageTask: Task<Void,Never>?
+    private var lastUsageAttempt = Date.distantPast
+    var usageGroups: [UsageBucket] { accounts.first(where:{$0.id == activeID})?.usage?.buckets ?? [] }
+    var activeUsage: UsageSnapshot? {
+        guard let snapshot = accounts.first(where:{$0.id == activeID})?.usage else { return nil }
+        return UsageSnapshot(fetchedAt:snapshot.fetchedAt,buckets:snapshot.buckets.filter{$0.id == usageGroupID})
+    }
     @Published var accounts: [SavedAccount] = []
     @Published var activeID: UUID?
     @Published var liveEmail: String?
@@ -24,20 +40,60 @@ final class AntigravityModel: ObservableObject {
         store = result
         return result
     }
+    private func refreshSnapshot() throws {
+        let store = try getStore()
+        let snapshot: StoreSnapshot
+        do { snapshot = try store.snapshot() }
+        catch { activeID = nil; liveEmail = nil; throw error }
+        accounts = snapshot.accounts; activeID = snapshot.activeID; liveEmail = snapshot.liveEmail
+        quotaDate = Date()
+        hasJournal = snapshot.hasJournal; loginPending = try store.isLoginPending()
+    }
     func refresh() {
+        do { try refreshSnapshot() }
+        catch { activeID = nil; liveEmail = nil; fail(error) }
+    }
+    func refreshUsage(manual:Bool = false) {
+        guard !refreshingUsage, !loginPending, !hasJournal else { return }
+        guard Date().timeIntervalSince(lastUsageAttempt) >= (manual ? 15 : 300) else { return }
+        lastUsageAttempt = Date()
         do {
+            try refreshSnapshot()
+            guard !loginPending, !hasJournal,
+                  let account = accounts.first(where:{$0.id == activeID}) else { throw SwitchError.accountNotFound }
+            guard let executable else { throw SwitchError.executableMissing }
             let store = try getStore()
-            let snapshot = try store.snapshot()
-            accounts = snapshot.accounts; activeID = snapshot.activeID; liveEmail = snapshot.liveEmail
-            hasJournal = snapshot.hasJournal; loginPending = try store.isLoginPending()
-        } catch { activeID = nil; liveEmail = nil; fail(error) }
+            let cancellation = CancellationFlag()
+            usageCancellation = cancellation; refreshingUsage = true
+            message = nil; messageIsError = false
+            usageTask = Task { [weak self] in
+                let result = await Task.detached { () -> Result<UsageSnapshot,Error> in
+                    do { return .success(try AntigravityUsageClient.read(executable:executable,cancellation:cancellation)) }
+                    catch { return .failure(error) }
+                }.value
+                guard let self else { return }
+                defer { self.refreshingUsage = false; self.usageCancellation = nil; self.usageTask = nil }
+                guard !cancellation.isCancelled else { return }
+                do {
+                    let usage = try result.get()
+                    try store.storeUsage(usage,identity:account.identity)
+                    self.refresh()
+                } catch { self.fail(error) }
+            }
+        } catch { fail(error) }
+    }
+    func shutdown() async {
+        usageCancellation?.cancel()
+        await usageTask?.value
     }
     private func perform(_ body: () throws -> Void, success:String) {
+        guard !refreshingUsage else { fail(ControlError.busy); return }
         do { try body(); message = success; messageIsError = false; refresh() }
         catch { refresh(); fail(error) }
     }
     func saveCurrent(name:String? = nil) {
         perform({ _ = try getStore().saveCurrent(name:name?.isEmpty == true ? nil : name) },success:"已保存 Antigravity 当前账号。")
+        if !messageIsError { lastUsageAttempt = .distantPast; refreshUsage() }
     }
     func add(name:String) {
         perform({
@@ -48,6 +104,7 @@ final class AntigravityModel: ObservableObject {
     }
     func switchAccount(_ account:SavedAccount) {
         perform({ try getStore().switchAccount(to:account.id) },success:"已切换为 \(account.name)。重新打开 Antigravity CLI 即可使用。")
+        if !messageIsError { lastUsageAttempt = .distantPast; refreshUsage() }
     }
     func rename(_ id:UUID,to name:String) {
         perform({try getStore().rename(id:id,name:name)},success:"账号名称已更新。")
@@ -57,6 +114,7 @@ final class AntigravityModel: ObservableObject {
     }
     func finishLogin() {
         perform({try AntigravityEnvironment.requireStopped(); try getStore().finishLogin()},success:"Antigravity 账号已添加。")
+        if !messageIsError { lastUsageAttempt = .distantPast; refreshUsage() }
     }
     func cancelLogin() {
         perform({try getStore().cancelLogin()},success:"已结束添加。已完成的登录会保留；需要时可手动切回原账号。")
@@ -104,11 +162,12 @@ final class AntigravityModel: ObservableObject {
             case "remove":
                 refresh(); guard !messageIsError else { return response() }
                 forget(try ControlCommand.account(args[0],in:accounts).id)
-            case "cancel": cancelLogin()
+            case "cancel":
+                if refreshingUsage { usageCancellation?.cancel() } else { cancelLogin() }
             case "finish": finishLogin()
             case "recover": recover()
             case "launch": launch()
-            case "usage": throw unsupported("Antigravity 用量暂未接入，请在官方 agy 中运行 /usage。")
+            case "usage": refreshUsage(manual:true)
             case "setup": throw unsupported("Antigravity 不需要 Codex 文件登录设置。请先保存当前账号，或添加账号。")
             default: throw ControlError.usage
             }
@@ -117,7 +176,7 @@ final class AntigravityModel: ObservableObject {
     }
     private func unsupported(_ text:String) -> Error { NSError(domain:"CodexSwitch",code:1,userInfo:[NSLocalizedDescriptionKey:text]) }
     private func response() -> ControlResponse {
-        ControlResponse(ok:!messageIsError,state:messageIsError ? "error" : loginPending ? "login_pending" : hasJournal ? "recovery_required" : "idle",
+        ControlResponse(ok:!messageIsError,state:messageIsError ? "error" : refreshingUsage ? "working" : loginPending ? "login_pending" : hasJournal ? "recovery_required" : "idle",
             message:message,accounts:accounts.map{ControlAccount(account:$0,activeID:activeID)},provider:.antigravity)
     }
 }

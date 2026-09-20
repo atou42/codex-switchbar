@@ -51,11 +51,28 @@ account-management API. Future CLI versions may change it. Missing required
 fields, malformed JSON, conflicting identities between copies, unsupported
 provider settings, unsafe paths, and Keychain errors fail explicitly.
 
-Existing Keychain items use `SecItemUpdate` to retain their access controls.
-Beginning a new login clears the saved official item and file only after the
-outer store has saved the outgoing credentials and written its recovery marker.
-Re-created items follow normal macOS access policy and may prompt the official
-CLI on first use. The adapter does not grant access to all applications.
+The shared official Keychain item is accessed through `/usr/bin/security`, the
+same Apple-signed accessor used by [go-keyring's Darwin backend](https://github.com/zalando/go-keyring/blob/master/keyring_darwin.go).
+Officially created items trust this accessor. Previously the app accessed the
+item under its own identity, so each new login's newly created item requested
+another cross-application authorization. Reusing the official accessor removes
+that extra identity without changing any ACL or unlocking the Keychain.
+
+Writes use `security -i` with a fixed service/account and a canonical base64
+value sent through stdin, never secret process arguments. The command matches
+upstream's 4096-byte interactive limit; oversized data fails before mutation.
+Diagnostics are discarded because interactive commands can echo secrets. Reads
+are bounded; missing-item status is distinguished from denial and other errors.
+The process is terminated on timeout. Synthetic native create/update/read/delete
+operations were verified without prompts; no live credentials were changed.
+
+Beginning a new login still clears the saved official item and file only after
+the outer store saves outgoing credentials and writes its recovery marker.
+Existing values are updated with `add-generic-password -U`. Private saved account
+copies remain in the app's separate Keychain service. macOS can still request
+authorization after app rebuilds, Keychain locking, or access-policy changes;
+this change does not promise that every system prompt disappears forever.
+The adapter never grants access to all applications.
 
 The Keychain and file cannot be updated in one atomic transaction. Both are
 compared before mutation; a partial failure retains the outer recovery marker
@@ -69,6 +86,13 @@ best-effort safeguards, not a global lock respected by Google software.
 Credentials can be shared with other official Antigravity clients; no claim is
 made that running clients switch their in-memory account.
 
-Only personal Google login is supported initially. Usage is unavailable through
-this adapter. A real second-account login and A → B → A acceptance test remain
+Only personal Google login is supported initially. Usage is available in 0.2.1 through the official read-only report described below. A real second-account login and A → B → A acceptance test remain
 separate from synthetic store tests and native compilation.
+
+## Official usage report (0.2.1)
+
+Installed CLI version: 1.2.7. Its `agy changelog` entry for 1.1.11 introduces read-only print-mode `/usage` and `/quota` reports without an agent turn, quota consumption or conversation creation. `agy --version` is checked before requesting one. Earlier print-mode behavior must not be used.
+
+Live command verified: `agy --disable-slash-commands=false -p /usage --output-format json --print-timeout 20s`. The response reported `SUCCESS`, `num_turns: 0`, `usage.total_tokens: 0` and an empty `conversation_id`. Actual account data is not included here.
+
+`command.data.groups` contains separate `Gemini Models` and `Claude and GPT models` groups. Bucket IDs observed were `gemini-5h`, `gemini-weekly`, `3p-5h`, and `3p-weekly`; `remaining_fraction` is already the remaining fraction, and `reset_time` is RFC3339. The adapter validates these values and preserves both pools. The UI makes the selected group explicit. The report contains no account email, so the store verifies the native identity before/after the helper.

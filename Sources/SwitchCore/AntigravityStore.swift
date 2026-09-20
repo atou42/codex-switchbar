@@ -176,6 +176,19 @@ public final class AntigravityStore {
             try SecureFile.remove(journalURL)
         }
     }
+    /// A late official usage result must never be attached to a different live login.
+    public func storeUsage(_ usage: UsageSnapshot, identity: AccountIdentity) throws {
+        try lock.withLock {
+            guard try journal() == nil else { throw SwitchError.unfinishedTransaction }
+            guard let bytes = try live.read(), try AntigravityCredential(data:bytes).identity == identity else {
+                throw SwitchError.concurrentChange
+            }
+            var registry = try registry()
+            guard let i = registry.accounts.firstIndex(where:{$0.identity == identity}) else { throw SwitchError.accountNotFound }
+            registry.accounts[i].usage = usage
+            try SecureFile.write(encoder.encode(registry),to:index)
+        }
+    }
     public func rename(id:UUID,name:String) throws {
         let name = try AccountName.validate(name)
         try lock.withLock {

@@ -110,11 +110,6 @@ public final class AntigravitySystemLogin: AntigravityLiveLogin {
         self.home = home; injectedRead = readKeychain; injectedWrite = writeKeychain
         self.requireStopped = requireStopped
     }
-    private var query: [String:Any] {
-        [kSecClass as String:kSecClassGenericPassword, kSecAttrService as String:"gemini",
-         kSecAttrAccount as String:"antigravity", kSecAttrSynchronizable as String:false,
-         kSecUseDataProtectionKeychain as String:false]
-    }
     private func checkEnvironment() throws {
         // Reject parent symlinks as well as credential symlinks. Never chmod official directories.
         for url in [home, home.appendingPathComponent(".gemini"), directory,
@@ -142,32 +137,13 @@ public final class AntigravitySystemLogin: AntigravityLiveLogin {
     }
     private func keychainBytes() throws -> Data? {
         if let injectedRead { return try injectedRead() }
-        var q = query
-        q[kSecReturnData as String] = true; q[kSecMatchLimit as String] = kSecMatchLimitOne
-        var result: CFTypeRef?
-        let status = SecItemCopyMatching(q as CFDictionary,&result)
-        if status == errSecItemNotFound { return nil }
-        guard status == errSecSuccess, let data = result as? Data else { throw SwitchError.keychain(status) }
-        return data
+        return try AntigravityKeychainCommand().read()
     }
     private func setKeychain(_ bytes: Data?, expected: Data?) throws {
         guard try keychainBytes() == expected else { throw SwitchError.concurrentChange }
         if let injectedWrite { try injectedWrite(bytes,expected); return }
-        let q = query
-        if let bytes {
-            let status: OSStatus
-            if expected != nil {
-                // Updating preserves the existing official item's access controls.
-                status = SecItemUpdate(q as CFDictionary,[kSecValueData as String:bytes] as CFDictionary)
-            } else {
-                var item = q; item[kSecValueData as String] = bytes
-                status = SecItemAdd(item as CFDictionary,nil)
-            }
-            guard status == errSecSuccess else { throw SwitchError.keychain(status) }
-        } else if expected != nil {
-            let status = SecItemDelete(q as CFDictionary)
-            guard status == errSecSuccess else { throw SwitchError.keychain(status) }
-        }
+        if bytes == nil && expected == nil { return }
+        try AntigravityKeychainCommand().write(bytes)
     }
     public func read() throws -> Data? {
         try checkEnvironment()

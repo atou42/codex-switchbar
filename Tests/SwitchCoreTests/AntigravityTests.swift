@@ -106,6 +106,15 @@ final class AntigravityTests: XCTestCase {
         XCTAssertThrowsError(try store.recover())
         XCTAssertEqual(try SecureFile.read(url),marker)
     }
+    func testUsageResultCannotBeStoredForDifferentLiveAccount() throws {
+        live.data = try sample("a"); let a = try store.saveCurrent(name:"A")
+        let usage = UsageSnapshot(buckets:[UsageBucket(limitId:"gemini", primary:UsageWindow(usedPercent:22,windowDurationMins:300))])
+        try store.storeUsage(usage, identity:a.identity)
+        XCTAssertEqual(try store.snapshot().accounts.first?.usage,usage)
+        live.data = try sample("b")
+        XCTAssertThrowsError(try store.storeUsage(UsageSnapshot(buckets:[]),identity:a.identity))
+        XCTAssertEqual(try store.snapshot().accounts.first?.usage,usage)
+    }
     func testRunningClientPreventsLoginAndSwitch() throws {
         live.data = try sample("a"); let a = try store.saveCurrent(name:"A")
         let guarded = try AntigravityStore(root:root,vault:vault,live:live,canSwitch:{throw SwitchError.runningClients(1)})

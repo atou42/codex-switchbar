@@ -41,7 +41,7 @@ struct ProviderPicker: View {
     }
 }
 
-/// One upward A-shaped silhouette, outlined for Gemini and filled for the shared pool.
+/// Gemini uses an outlined A with a G badge; the shared pool keeps the solid A.
 @MainActor
 enum AntigravityMark {
     private static let outline = make(filled: false)
@@ -65,6 +65,12 @@ enum AntigravityMark {
                 path.lineWidth = 1.5
                 path.lineJoinStyle = .round
                 path.stroke()
+                // Keep a transparent gap so the badge stays legible on either menu-bar theme.
+                NSRect(x: 9, y: 0, width: 7, height: 8).fill(using: .clear)
+                ("G" as NSString).draw(at: NSPoint(x: 9.5, y: -0.5), withAttributes: [
+                    .font: NSFont.systemFont(ofSize: 8, weight: .bold),
+                    .foregroundColor: NSColor.black
+                ])
             }
             return true
         }

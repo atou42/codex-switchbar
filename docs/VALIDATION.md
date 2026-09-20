@@ -130,3 +130,8 @@ System menu-bar pixel capture was not available from the app-window automation s
 - Codex keeps its arrows. Antigravity uses one upward A-shaped mark: outline for Gemini, solid for the shared pool. Matching marks appear in the group selector. Status image widths remain 51 pt with quotas and 18 pt without them.
 - Added native image tests proving the groups produce different pixels even with identical quotas, switching back restores the original image, and dimensions/template behavior remain unchanged. All 106 tests and the native release build passed.
 - Installed app's group selector was inspected visually and both groups were clicked successfully. Direct menu-bar screenshot inspection remains unavailable through the current app accessibility surface.
+
+## 2026-09-20 — Gemini G badge
+
+- Added a small bold G at the lower-right of the outlined Gemini mark, with transparent separation from the outline. The shared-pool solid mark is unchanged; menu-bar dimensions remain unchanged.
+- Group selectors use the same 16 pt marks so the G is not reduced to 12 pt. Installed settings UI was inspected visually. All 106 tests, including equal group heights and status image dimensions, passed; native release build passed.

@@ -230,7 +230,7 @@ struct AntigravityQuotaGroupPicker: View {
         Button { selection = id } label: {
             HStack(spacing: 5) {
                 Image(nsImage: AntigravityMark.image(groupID: id))
-                    .resizable().frame(width: 12, height: 12).accessibilityHidden(true)
+                    .resizable().frame(width: 16, height: 16).accessibilityHidden(true)
                 Text(title)
             }.font(.system(size: 11, weight: .medium))
                 .frame(maxWidth: .infinity).padding(.vertical, 5)

@@ -27,15 +27,53 @@ private struct SwitchMenuLabel: View {
             if model.provider == .antigravity {
                 AntigravityMenuLabel(model: model.antigravity, showPercent: model.showPercent)
             } else {
-                HStack(spacing: 3) {
-                    Image(systemName: model.pending == nil ? "arrow.left.arrow.right" : "clock.arrow.circlepath")
-                    if !model.barTitle.isEmpty {
-                        Text(model.barTitle).monospacedDigit()
-                    }
-                }
+                CodexMenuLabel(title: model.barTitle, showPercent: model.showPercent, waiting: model.pending != nil)
             }
         }
         .help(model.provider == .codex ? model.text("Codex 当前文件登录 · 点击查看", "Codex file login · Click for details") : model.text("Antigravity CLI · 点击管理账号", "Antigravity CLI · Manage accounts"))
+    }
+}
+
+@MainActor
+struct CodexMenuLabel: View {
+    var title: String
+    var showPercent: Bool
+    var waiting: Bool
+    var body: some View {
+        Image(nsImage: CodexStatusImage.make(title: title, showPercent: showPercent, waiting: waiting))
+            .accessibilityLabel("Codex" + (showPercent ? " · \(title.isEmpty ? "—" : title)" : ""))
+    }
+}
+
+/// Both providers use the same canvas so changing provider cannot move the popover anchor.
+@MainActor
+enum CodexStatusImage {
+    private static var cachedKey = ""
+    private static var cachedImage: NSImage?
+
+    static func make(title: String, showPercent: Bool, waiting: Bool) -> NSImage {
+        let displayedTitle = title.isEmpty ? "—" : title
+        let key = "\(displayedTitle)|\(showPercent)|\(waiting)"
+        if key == cachedKey, let cachedImage { return cachedImage }
+        let image = NSImage(size: NSSize(width: showPercent ? 51 : 18, height: 22), flipped: false) { _ in
+            let symbol = NSImage(systemSymbolName: waiting ? "clock.arrow.circlepath" : "arrow.left.arrow.right",
+                                 accessibilityDescription: nil)
+            symbol?.draw(in: NSRect(x: 1, y: 3, width: 16, height: 16))
+            if showPercent {
+                let paragraph = NSMutableParagraphStyle()
+                paragraph.alignment = .center
+                (displayedTitle as NSString).draw(in: NSRect(x: 19, y: 4, width: 32, height: 14), withAttributes: [
+                    .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium),
+                    .foregroundColor: NSColor.black,
+                    .paragraphStyle: paragraph
+                ])
+            }
+            return true
+        }
+        image.isTemplate = true
+        cachedKey = key
+        cachedImage = image
+        return image
     }
 }
 

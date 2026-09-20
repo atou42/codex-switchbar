@@ -135,3 +135,12 @@ System menu-bar pixel capture was not available from the app-window automation s
 
 - Added a small bold G at the lower-right of the outlined Gemini mark, with transparent separation from the outline. The shared-pool solid mark is unchanged; menu-bar dimensions remain unchanged.
 - Group selectors use the same 16 pt marks so the G is not reduced to 12 pt. Installed settings UI was inspected visually. All 106 tests, including equal group heights and status image dimensions, passed; native release build passed.
+
+## 2026-09-20 — Stable provider switching and shared settings layout
+
+- Both status labels now use matching native template canvases: 51×22 with quota enabled, 18×22 without it. Missing/stale Codex usage shows an em dash instead of shrinking the status item. The old status-label geometry failed 40 comparisons; a separate empty-usage case reproduced 18 vs 51 pt before the fix.
+- Menu panel now keeps a fixed 392 pt width and 640 pt height (bounded by screen space), with a pinned header/provider selector and footer, scrolling content, and a fixed three-row account viewport. Notifications overlay the content rather than expanding it.
+- Provider account cards share header, provider-detail slot, quota-row and source-footer geometry. A new native test failed 12 comparisons before the fix and now checks equal loaded/missing-state sizes in both languages and both settings/menu widths. Additional Codex quota windows open in a separate popover.
+- Settings use the same current-account → account-management → connection → preferences order, full-width cards, external section headings, shared account rows and sign-in guidance. Account count no longer changes the height before the add-account controls.
+- Installed the final native build. Actual settings-window screenshots and repeated provider switching verified aligned top cards/progress bars/account headings; at the same scrolled offset, the sign-in row, name field, save button, guidance, connection heading and card remained at the same positions. No sign-in or account-credential switch was performed.
+- All 109 tests passed, native release build passed, and source scan passed. Direct menu-bar popover screenshot inspection remains unavailable through the current app accessibility surface; menu dimensions and status-label geometry were checked in code/native layout tests instead.

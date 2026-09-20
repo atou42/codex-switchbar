@@ -9,7 +9,7 @@ final class QuotaLayoutTests: XCTestCase {
         await MainActor.run {
             for chinese in [true, false] {
                 for width: CGFloat in [328, 524] {
-                    func height(_ selection: String) -> CGFloat {
+                    @MainActor func height(_ selection: String) -> CGFloat {
                         let view = NSHostingView(rootView:
                             AntigravityQuotaGroupPicker(selection: .constant(selection), chinese: chinese)
                                 .frame(width: width))

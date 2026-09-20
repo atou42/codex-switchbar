@@ -27,21 +27,28 @@ struct SettingsPanel: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     if model.provider == .codex {
-                        if let message = model.message { Notice(text: message, error: model.messageIsError) { model.message = nil } }
-                        sharedEnvironment
+                        if let account = model.active {
+                            AccountUsageCard(account: account, usage: account.usage, provider: .codex,
+                                             chinese: model.chinese, maskEmails: model.maskEmails) { EmptyView() }
+                        }
                         accountManagement
+                        sharedEnvironment
                     } else {
                         AntigravityPanel(model: model.antigravity, chinese: model.chinese, maskEmails: model.maskEmails)
                     }
                     preferences
                     if model.provider == .codex { boundaries }
-                }.padding(24)
+                }.frame(maxWidth: .infinity, alignment: .leading).padding(24)
             }
         }
         .frame(width: 620, height: 690)
         .background(Color(nsColor: .windowBackgroundColor))
         .tint(Appearance.color(for: model.provider))
         .environment(\.providerAccent, Appearance.color(for: model.provider))
+        .overlay(alignment: .bottom) {
+            ProviderNotice(model: model, antigravity: model.antigravity)
+                .environment(\.providerAccent, Appearance.color(for: model.provider)).padding(24)
+        }
         .onAppear { model.menuOpened() }
         .sheet(item: $renaming) { account in
             VStack(alignment: .leading, spacing: 16) {
@@ -74,7 +81,7 @@ struct SettingsPanel: View {
     }
 
     private var sharedEnvironment: some View {
-        section(model.text("首次使用", "Getting started")) {
+        section(model.text("连接设置", "Connection")) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Image(systemName: model.fileReady ? "checkmark.shield" : "slider.horizontal.3")
@@ -111,7 +118,7 @@ struct SettingsPanel: View {
                         Button(model.text("仅清理标记…", "Clear marker only…")) { confirmDismiss = true }
                     }
                 }
-            }
+            }.frame(minHeight: 110, alignment: .top)
         }
     }
     private var accountManagement: some View {
@@ -119,33 +126,21 @@ struct SettingsPanel: View {
             VStack(alignment: .leading, spacing: 13) {
                 Text(model.text("已登录 Codex？先点“保存当前账号”。要添加其他账号，请填一个名称，再点“添加账号并登录”；每个账号重复一次。", "Already signed in to Codex? Choose Save current account. To add another, enter a name and choose Add account & sign in. Repeat for each account."))
                     .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .frame(minHeight: 34, alignment: .top)
                 if !model.fileReady {
-                    Text(model.text("请先完成上方“首次使用”设置。", "Complete Getting started above first."))
+                    Text(model.text("请先完成下方“连接设置”。", "Complete Connection settings below first."))
                         .font(.system(size: 11)).foregroundStyle(.orange)
                 }
-                ForEach(model.accounts) { account in
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 5) {
-                            HStack(spacing: 7) {
-                                Text(account.name).font(.system(size: 13, weight: .semibold))
-                                if model.activeID == account.id {
-                                    Text(model.text("当前", "Active")).font(.system(size: 10)).foregroundStyle(Appearance.accent)
-                                }
-                            }
-                            Text(model.maskEmails ? AccountName.masked(account.email) : (account.email ?? "—"))
-                                .font(.system(size: 11)).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if model.activeID != account.id {
-                            Button(model.pending?.id == account.id ? model.text("等待中", "Queued") : model.text("切换", "Switch")) {
-                                model.requestSwitch(account)
-                            }.controlSize(.small).disabled(model.isLogin || model.hasJournal)
-                        }
-                        IconButton(symbol: "pencil", label: model.text("改名", "Rename")) { renamed = account.name; renaming = account }
-                        IconButton(symbol: "trash", label: model.text("移除副本", "Remove saved copy")) { deleting = account }
-                            .disabled(model.isBusy)
+                SavedAccountList {
+                    ForEach(model.accounts) { account in
+                        ManagedAccountRow(account: account, active: model.activeID == account.id,
+                            chinese: model.chinese, maskEmails: model.maskEmails, queued: model.pending?.id == account.id,
+                            switchDisabled: model.isLogin || model.hasJournal, removeDisabled: model.isBusy,
+                            switchAccount: { model.requestSwitch(account) },
+                            rename: { renamed = account.name; renaming = account },
+                            remove: { deleting = account })
+                        Divider().opacity(0.5)
                     }
-                    Divider().opacity(0.5)
                 }
                 if let pending = model.pendingAccount {
                     Notice(text: model.text("等待切换至 \(pending.name)。退出所有 Codex 进程后自动完成，5 分钟后取消。", "Waiting to switch to \(pending.name). Close all Codex processes; expires in 5 minutes.")) { model.cancelPending() }
@@ -180,7 +175,7 @@ struct SettingsPanel: View {
                     Picker(model.text("登录方式", "Sign-in method"), selection: $loginMethod) {
                         Text(model.text("网页登录", "Browser")).tag(LoginMethod.browser)
                         Text(model.text("设备码登录", "Device code")).tag(LoginMethod.device)
-                    }.pickerStyle(.segmented)
+                    }.pickerStyle(.segmented).frame(height: 24)
                     HStack {
                         TextField(model.text("账号名称（必填），例如：工作 / 个人", "Account name (required), e.g. Work / Personal"), text: $newName)
                             .textFieldStyle(.roundedBorder)
@@ -190,10 +185,7 @@ struct SettingsPanel: View {
                     }
                     Button(model.text("保存当前账号", "Save current account")) { model.saveCurrent() }
                         .disabled(model.isBusy || !model.fileReady)
-                    Text(model.text("添加后启用新账号，原账号保留在钥匙串中。浏览器若自动登录了原账号，请在官方页面改选目标账号。", "The new account becomes active; the previous one stays in Keychain. Select the intended account on the official page if your browser defaults to the old one."))
-                        .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    Text(model.text("添加或切换前，请先退出 Codex 桌面应用、终端中的 Codex 和编辑器里的 Codex。保留本工具打开即可。", "Before adding or switching accounts, quit the Codex desktop app, terminal clients and editor extensions. Keep this app open."))
-                        .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    AccountLoginGuidance(chinese: model.chinese)
                 }
             }
         }
@@ -239,11 +231,7 @@ struct SettingsPanel: View {
         }
     }
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Text(title).font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
-                .padding(.leading, 2)
-            Card { content().frame(maxWidth: .infinity, alignment: .leading) }
-        }
+        SettingsSection(title: title, content: content)
     }
 }
 #endif

@@ -14,55 +14,30 @@ struct AntigravityPanel: View {
     private func text(_ zh: String, _ en: String) -> String { chinese ? zh : en }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if let message = model.message {
-                Notice(text: message, error: model.messageIsError) { model.message = nil }
-            }
+        VStack(alignment: .leading, spacing: 22) {
             if let account = model.accounts.first(where: { $0.id == model.activeID }) {
                 AccountUsageCard(account: account, usage: model.activeUsage, provider: .antigravity,
                                  chinese: chinese, maskEmails: maskEmails) {
                     AntigravityQuotaGroupPicker(selection: $model.usageGroupID, chinese: chinese)
                 }
             }
-            Card {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Antigravity CLI").font(.headline)
-                    Text(text("管理官方 agy 的登录账号。添加或切换前，请先退出所有 agy 会话。", "Manage sign-ins for the official agy CLI. Close all agy sessions before adding or switching accounts."))
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                    Text(model.executable?.path ?? text("未找到官方 agy，请先安装 Antigravity CLI。", "Official agy was not found. Install Antigravity CLI first."))
-                        .font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
-                    HStack {
-                        Button(text("打开官方 CLI", "Open official CLI")) { model.launch() }
-                            .disabled(model.executable == nil || (model.hasJournal && !model.loginPending))
-                        Button(text("刷新账号状态", "Refresh account status")) { model.refresh() }
-                    }
-                    if let email = model.liveEmail {
-                        Text(text("当前登录：", "Current login: ") + (maskEmails ? AccountName.masked(email) : email))
-                            .font(.system(size: 12)).textSelection(.enabled)
-                    }
-                    Button(text("刷新额度", "Refresh quota")) { model.refreshUsage(manual: true) }
-                        .disabled(model.refreshingUsage || model.loginPending || model.hasJournal)
-                }.frame(maxWidth: .infinity, alignment: .leading)
-            }
-            Card {
+            SettingsSection(title: text("我的账号", "My accounts")) {
                 VStack(alignment: .leading, spacing: 13) {
-                    Text(text("我的账号", "My accounts")).font(.headline)
                     Text(text("已在 agy 登录？先保存当前账号。添加其他账号时，填写名称，再在打开的终端中完成官方网页登录。", "Already signed in with agy? Save your current account first. To add another, enter a name and complete the official browser sign-in from the terminal that opens."))
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                    ForEach(model.accounts) { account in
-                        HStack {
-                            AntigravityAccountLabel(account: account, active: model.activeID == account.id, chinese: chinese, maskEmails: maskEmails, usageGroupID: model.usageGroupID)
-                            Spacer()
-                            if model.activeID != account.id {
-                                Button(text("切换", "Switch")) { model.switchAccount(account) }.controlSize(.small)
-                                    .disabled(model.loginPending || model.hasJournal)
-                            }
-                            IconButton(symbol: "pencil", label: text("改名", "Rename")) { renamed = account.name; renaming = account }
-                                .disabled(model.loginPending || model.hasJournal)
-                            IconButton(symbol: "trash", label: text("移除副本", "Remove saved copy")) { deleting = account }
-                                .disabled(model.loginPending || model.hasJournal)
+                        .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        .frame(minHeight: 34, alignment: .top)
+                    SavedAccountList {
+                        ForEach(model.accounts) { account in
+                            ManagedAccountRow(account: account, active: model.activeID == account.id,
+                                chinese: chinese, maskEmails: maskEmails,
+                                switchDisabled: model.loginPending || model.hasJournal || model.refreshingUsage,
+                                renameDisabled: model.loginPending || model.hasJournal,
+                                removeDisabled: model.loginPending || model.hasJournal,
+                                switchAccount: { model.switchAccount(account) },
+                                rename: { renamed = account.name; renaming = account },
+                                remove: { deleting = account })
+                            Divider().opacity(0.5)
                         }
-                        Divider().opacity(0.5)
                     }
                     if model.loginPending {
                         Text(text("在终端和浏览器中完成登录后，退出该 agy 会话，再点“已登录，保存账号”。", "After completing sign-in in the terminal and browser, exit that agy session, then choose “Signed in — save account”."))
@@ -79,6 +54,11 @@ struct AntigravityPanel: View {
                         Button(text("核对并恢复", "Reconcile & recover")) { model.recover() }
                     } else {
                         HStack {
+                            Text(text("登录方式", "Sign-in method"))
+                            Text(text("网页登录", "Browser")).foregroundStyle(.secondary)
+                            Spacer()
+                        }.font(.system(size: 12)).frame(height: 24)
+                        HStack {
                             TextField(text("账号名称，例如：工作 / 个人", "Account name, e.g. Work / Personal"), text: $newName)
                                 .textFieldStyle(.roundedBorder)
                             Button(text("添加账号并登录", "Add account & sign in")) { model.add(name: newName) }
@@ -87,11 +67,30 @@ struct AntigravityPanel: View {
                         }
                         Button(text("保存当前账号", "Save current account")) { model.saveCurrent() }
                             .disabled(model.liveEmail == nil)
+                        AccountLoginGuidance(chinese: chinese)
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }
-            Text(text("账号副本保存在 macOS 钥匙串。顶部上方为 5H，下方为 Weekly；未提供或已过期的数据显示 —。", "Saved account copies stay in macOS Keychain. The menu bar shows 5H above Weekly; unavailable or expired values show —."))
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+            SettingsSection(title: text("连接设置", "Connection")) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: model.executable == nil ? "exclamationmark.circle" : "checkmark.shield")
+                            .foregroundStyle(model.executable == nil ? Color.orange : Appearance.antigravity)
+                        Text(text("Antigravity CLI", "Antigravity CLI")).font(.system(size: 13, weight: .semibold))
+                        Spacer()
+                        Button(text("打开 CLI", "Open CLI")) { model.launch() }
+                            .controlSize(.small).disabled(model.executable == nil || (model.hasJournal && !model.loginPending))
+                    }
+                    Text(model.executable?.path ?? text("未找到官方 agy，请先安装 Antigravity CLI。", "Official agy was not found. Install Antigravity CLI first."))
+                        .font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
+                    HStack {
+                        Button(text("刷新账号状态", "Refresh account status")) { model.refresh() }
+                        Button(text("刷新额度", "Refresh quota")) { model.refreshUsage(manual: true) }
+                            .disabled(model.refreshingUsage || model.loginPending || model.hasJournal)
+                    }
+                }.frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
+            }
+
         }
         .onAppear { model.refresh(); model.refreshUsage() }
         .sheet(item: $renaming) { account in
@@ -139,7 +138,6 @@ struct AntigravityMenuContent: View {
     var chinese: Bool
     var maskEmails: Bool
     var settings: () -> Void
-    var quit: () -> Void
     private func text(_ zh: String, _ en: String) -> String { chinese ? zh : en }
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
@@ -160,9 +158,6 @@ struct AntigravityMenuContent: View {
                         Button(text("开始设置", "Get started"), action: settings).buttonStyle(.borderedProminent)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }
-            }
-            if let message = model.message {
-                Notice(text: message, error: model.messageIsError) { model.message = nil }
             }
             if model.loginPending || model.hasJournal {
                 Button(text("继续处理未完成的登录", "Review unfinished sign-in"), action: settings)
@@ -186,25 +181,7 @@ struct AntigravityMenuContent: View {
                             }
                         }
                     }
-                }.frame(height: min(CGFloat(model.accounts.count) * 57, 228))
-            }
-            Divider().opacity(0.55)
-            HStack {
-                Button(action: settings) {
-                    Label(text("添加账号", "Add account"), systemImage: "plus.circle")
-                        .font(.system(size: 12, weight: .medium))
-                }.buttonStyle(.plain)
-                Spacer()
-                Text(text("共用一个环境", "One shared environment"))
-                    .font(.system(size: 10)).foregroundStyle(.tertiary)
-                Menu {
-                    Button(text("打开官方 CLI", "Open official CLI")) { model.launch() }
-                        .disabled(model.executable == nil || (model.hasJournal && !model.loginPending))
-                    Button(text("账号与设置", "Accounts & Settings"), action: settings)
-                    Divider()
-                    Button(text("退出 Codex Switch", "Quit Codex Switch"), action: quit)
-                } label: { Image(systemName: "ellipsis").frame(width: 20, height: 20) }
-                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                }.frame(height: 171)
             }
         }.onAppear { model.refresh(); model.refreshUsage() }
     }
@@ -242,46 +219,4 @@ struct AntigravityQuotaGroupPicker: View {
     }
 }
 
-private struct AntigravityAccountLabel: View {
-    var account: SavedAccount
-    var active: Bool
-    var chinese: Bool
-    var maskEmails: Bool
-    var usageGroupID: String
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Text(account.name).font(.system(size: 12, weight: .semibold))
-                if active { Text(chinese ? "当前" : "Active").font(.system(size: 10)).foregroundStyle(Appearance.antigravity) }
-            }
-            Text(maskEmails ? AccountName.masked(account.email) : account.email ?? "—").font(.system(size: 11)).foregroundStyle(.secondary).textSelection(.enabled)
-            if !active, let usage = account.usage {
-                AntigravityQuotaSummary(usage: UsageSnapshot(fetchedAt: usage.fetchedAt,
-                    buckets: usage.buckets.filter { $0.id == usageGroupID }), chinese: chinese, cached: true)
-            }
-        }
-    }
-}
-
-private struct AntigravityQuotaSummary: View {
-    var usage: UsageSnapshot?
-    var chinese: Bool
-    var cached = false
-    var body: some View {
-        TimelineView(.periodic(from: .now, by: 30)) { context in
-            let quota = MenuBarQuota.stacked(usage: usage, at: context.date)
-            VStack(alignment: .leading, spacing: 3) {
-                Text("5H  \(quota.fiveHour)    Weekly  \(quota.weekly)")
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
-                if let usage {
-                    HStack(spacing: 3) {
-                        Text(cached ? (chinese ? "缓存 ·" : "Cached ·") : (chinese ? "更新于" : "Updated"))
-                        Text(usage.fetchedAt, style: .date)
-                        Text(usage.fetchedAt, style: .time)
-                    }.font(.system(size: 10)).foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-}
 #endif

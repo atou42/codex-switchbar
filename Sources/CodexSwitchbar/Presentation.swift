@@ -134,10 +134,108 @@ enum UsagePresentation {
 struct Card<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
-        content.padding(16)
+        content.frame(maxWidth: .infinity, alignment: .leading).padding(16)
             .background(Color(nsColor: .controlBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 15).strokeBorder(Appearance.separator, lineWidth: 0.5))
+    }
+}
+
+@MainActor
+struct SettingsSection<Content: View>: View {
+    var title: String
+    @ViewBuilder var content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text(title).font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+                .padding(.leading, 2)
+            Card { content }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+@MainActor
+struct ProviderNotice: View {
+    @ObservedObject var model: AppModel
+    @ObservedObject var antigravity: AntigravityModel
+    var body: some View {
+        if model.provider == .codex {
+            if let message = model.message {
+                Notice(text: message, error: model.messageIsError) { model.message = nil }
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+            }
+        } else if let message = antigravity.message {
+            Notice(text: message, error: antigravity.messageIsError) { antigravity.message = nil }
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        }
+    }
+}
+
+struct AccountLoginGuidance: View {
+    var chinese: Bool
+    @State private var showDetails = false
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(chinese ? "添加或切换前，请先退出相关客户端。保留本工具打开即可。" : "Close the relevant clients before adding or switching accounts. Keep this app open.")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Button { showDetails = true } label: { Image(systemName: "info.circle") }
+                .buttonStyle(.plain).foregroundStyle(.secondary)
+                .help(chinese ? "登录说明" : "Sign-in details")
+                .popover(isPresented: $showDetails) {
+                    Text(chinese ? "新账号登录后会成为当前账号，原账号保留在钥匙串。浏览器若自动登录了原账号，请在官方页面改选目标账号。" : "The newly signed-in account becomes active; the previous account stays in Keychain. If the browser signs in automatically, select the intended account on the official page.")
+                        .font(.system(size: 12)).padding(16).frame(width: 310)
+                }
+        }.frame(height: 34, alignment: .top)
+    }
+}
+
+/// A stable three-row viewport keeps subsequent controls in the same place across providers.
+struct SavedAccountList<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 0) { content }.frame(maxWidth: .infinity, alignment: .leading)
+        }.frame(height: 171)
+    }
+}
+
+struct ManagedAccountRow: View {
+    @Environment(\.providerAccent) private var accent
+    var account: SavedAccount
+    var active: Bool
+    var chinese: Bool
+    var maskEmails: Bool
+    var queued = false
+    var switchDisabled: Bool
+    var renameDisabled = false
+    var removeDisabled: Bool
+    var switchAccount: () -> Void
+    var rename: () -> Void
+    var remove: () -> Void
+    var body: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 7) {
+                    Text(account.name).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                    if active { Text(chinese ? "当前" : "Active").font(.system(size: 10)).foregroundStyle(accent) }
+                }
+                Text(maskEmails ? AccountName.masked(account.email) : account.email ?? "—")
+                    .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+                    .help(maskEmails ? AccountName.masked(account.email) : account.email ?? "—")
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            Group {
+                if active {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(accent)
+                } else {
+                    Button(queued ? (chinese ? "等待中" : "Queued") : (chinese ? "切换" : "Switch"), action: switchAccount)
+                        .controlSize(.small).disabled(switchDisabled)
+                }
+            }.frame(width: 56)
+            IconButton(symbol: "pencil", label: chinese ? "改名" : "Rename", action: rename).disabled(renameDisabled)
+            IconButton(symbol: "trash", label: chinese ? "移除副本" : "Remove saved copy", action: remove).disabled(removeDisabled)
+        }.frame(height: 56)
     }
 }
 

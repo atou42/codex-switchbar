@@ -20,20 +20,31 @@ The app does not proxy requests, scrape browser cookies, handle API keys, implem
 
 ## Build and install
 
-Install Apple development tools (`xcode-select --install`) and the official Codex CLI first. From this directory:
+Install Apple development tools (`xcode-select --install`) and the official Codex CLI first. An existing Apple Development or Developer ID Application signing identity must be available in your Keychain. On first setup, list the available identities and explicitly pin the chosen certificate's full SHA-1 fingerprint:
+
+```sh
+python3 Scripts/configure-signing.py
+python3 Scripts/configure-signing.py --identity CERTIFICATE_SHA1
+```
+
+Replace `CERTIFICATE_SHA1` with a fingerprint from the list. The tool does not select, create, or rotate certificates automatically. If none is available, configure a signing identity through Apple's developer tools first. Then install; later updates use the same command:
 
 ```sh
 bash Scripts/install.sh
 ```
 
-The installer tests, builds the host architecture, ad-hoc signs, and installs `/Applications/Codex Switch.app`. No `sudo`, npm dependencies, credentials, or bundled Codex are required. Quit an existing copy before updating. For just a build or both Mac architectures:
+The installer checks the pinned identity, tests, builds the host architecture, signs with that identity, and installs `/Applications/Codex Switch.app`. It does not request passwords, `sudo`, or GitHub tokens; macOS may request permission to use the signing key. Quit an existing copy before updating. For just a build or both Mac architectures:
 
 ```sh
 bash Scripts/build-app.sh
 bash Scripts/build-app.sh --universal
 ```
 
-Artifacts are local/ad-hoc signed, **not Apple notarized**. Never disable system-wide security to run them. Rebuilds can trigger a new Keychain approval prompt; inspect the application before granting it.
+Artifacts are locally signed, **not Apple notarized**. Never disable system-wide security to run them. A missing pinned identity stops the build instead of silently using ad-hoc signing. Explicit `--ad-hoc` builds are allowed only without a signing configuration, for CI or disposable tests; do not use them to update your everyday account manager.
+
+The certificate fingerprint is stored outside the repository at `~/Library/Application Support/Codex Switch/signing/identity.json`. The private key remains in Keychain and is never bundled. Preserve that configuration and identity across updates. Each account saved by an older build may need one final **Always Allow** approval. Locked Keychains, prior one-time grants, or identity changes can still cause prompts. The setup does not broaden account ACLs, change system trust, or recreate saved records.
+
+A fixed self-signed certificate is insufficient: modern macOS uses a changing code hash for its Keychain partition, whereas Apple-issued developer identities use a stable team identifier. See [Apple's Security source](https://github.com/apple-oss-distributions/Security/blob/main/securityd/src/clientid.cpp#L259-L274).
 
 ## Onboarding
 
@@ -106,4 +117,4 @@ Use `codex-switch --provider antigravity` with `list`, `status`, `save [name]`, 
 
 Authentication copies stay in a separate Keychain service; metadata and token-free journals live under the app's `antigravity` support directory. Settings, conversations, and HOME are not cloned or rewritten. Partial native-storage updates retain a recovery marker and never automatically replay a stale backup. See [research and compatibility limits](docs/ANTIGRAVITY-RESEARCH.md) and [validation](docs/VALIDATION.md). A real two-account Google login/switch cycle remains a separate manual acceptance step.
 
-The shared Antigravity Keychain item now uses the same Apple-signed accessor as official agy, avoiding repeated cross-application permission requests when each login creates a new item. No ACLs are broadened. Locked Keychains, one-time grants, old private account copies, and ad-hoc rebuilds can still require macOS approval.
+The shared Antigravity Keychain item uses the same Apple-signed accessor as official agy, avoiding repeated cross-application permission requests when each login creates a new item. Private saved copies use the pinned app signing identity described above. No ACLs are broadened. Locked Keychains, one-time grants, old private account copies, and signing-identity changes can still require macOS approval.

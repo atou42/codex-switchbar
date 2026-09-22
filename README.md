@@ -30,7 +30,7 @@
 
 ## 安装
 
-需要 macOS 13+、Swift 5.9+ 的 Apple 开发工具，以及已安装的官方 Codex CLI。安装脚本不会自动安装 / 更新 Codex，也不会索取密码、`sudo` 或 GitHub token。
+需要 macOS 13+、Swift 5.9+ 的 Apple 开发工具、已安装的官方 Codex CLI，以及钥匙串中已有的 Apple Development 或 Developer ID Application 签名身份。安装脚本不会自动安装 / 更新 Codex，也不会索取密码、`sudo` 或 GitHub token；macOS 可能弹出签名私钥的访问授权。
 
 首次没有开发工具时先运行：
 
@@ -38,13 +38,22 @@
 xcode-select --install
 ```
 
-在源码目录执行：
+首次在源码目录运行以下命令，查看本机可用的签名身份，再明确选择对应的 SHA-1 指纹：
+
+```sh
+python3 Scripts/configure-signing.py
+python3 Scripts/configure-signing.py --identity CERTIFICATE_SHA1
+```
+
+将 `CERTIFICATE_SHA1` 替换为上一步列出的完整指纹。工具不会替你选择、创建或更换证书。没有可用身份时，需先通过 Apple 开发者工具配置。
+
+随后安装；以后更新只需再次运行：
 
 ```sh
 bash Scripts/install.sh
 ```
 
-脚本先运行测试，再编译本机架构、生成图标、进行本地 ad-hoc 签名，安装至 `/Applications/Codex Switch.app` 并打开。安装前需退出旧版 Codex Switch。无需 Xcode 工程文件或 npm 依赖。
+脚本检查已固定的签名身份、运行测试，再编译本机架构、生成图标，使用同一身份签名，安装至 `/Applications/Codex Switch.app` 并打开。安装前需退出旧版 Codex Switch。无需 Xcode 工程文件或 npm 依赖。
 
 只构建，或构建 Apple Silicon + Intel 通用包：
 
@@ -53,7 +62,7 @@ bash Scripts/build-app.sh
 bash Scripts/build-app.sh --universal
 ```
 
-产物在 `dist/Codex Switch.app`。这是**本地签名而非 Apple 公证**的构建；不要全局关闭 Gatekeeper。自建版本更新后，钥匙串可能重新询问访问许可，请核对应用与路径再批准。CI 产物也不等于已公证发行版。
+产物在 `dist/Codex Switch.app`。这是**本地签名而非 Apple 公证**的构建；不要全局关闭 Gatekeeper。固定身份不可用时，构建会停止，不会自动退回临时签名。`--ad-hoc` 仅供没有签名配置的 CI 或一次性测试环境使用，不用于更新日常管理账号的应用。
 
 退出后可从访达的「应用程序」打开 **Codex Switch**。窗口打开时显示 Dock 图标；关闭窗口后继续在顶部菜单栏运行。
 
@@ -219,8 +228,12 @@ codex-switch --provider antigravity recover
 
 研究依据与实际验收边界见 [Antigravity 接入记录](docs/ANTIGRAVITY-RESEARCH.md) 和 [验收记录](docs/VALIDATION.md)。
 
-## 钥匙串授权（0.2.1）
+## 钥匙串授权
 
 Antigravity 的共享登录记录改用与官方 agy 相同的 Apple 钥匙串访问程序。正常添加新账号时，不再因为读取方变成 Codex Switch 而每次要求重新授权。没有扩大钥匙串权限，也没有改成明文保存。
 
-macOS 仍决定最终授权：钥匙串锁定、此前选择“仅允许一次”、旧保存副本首次访问或本地签名构建升级，都可能再次询问。不能承诺所有系统状态下永久只弹一次。
+日常构建固定使用同一个 Apple 签发的签名身份，避免每次更新都被识别为新的访问者。指纹配置保存在 `~/Library/Application Support/Codex Switch/signing/identity.json`，私钥仍在钥匙串中，不进入源码或安装包。不要删除该配置、随意轮换证书，或用 CI 临时签名包覆盖本机安装。
+
+从旧版过渡时，每个已保存账号可能需要最后选择一次「始终允许」。钥匙串锁定、此前只允许一次或更换签名身份时仍可能弹窗；工具不会自动扩大账号权限、修改系统信任或删除重建旧记录。
+
+仅固定自签证书不足以解决此问题：现代 macOS 对这类程序仍按每次构建的代码指纹检查钥匙串分区；Apple 签发的开发者身份才使用稳定的团队标识。见 [Apple Security 源码](https://github.com/apple-oss-distributions/Security/blob/main/securityd/src/clientid.cpp#L259-L274)。

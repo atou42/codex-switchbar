@@ -7,7 +7,9 @@ if /usr/bin/pgrep -x CodexSwitchbar >/dev/null 2>&1; then
   echo 'Quit Codex Switch from its menu before installing an update.' >&2
   exit 1
 fi
+python3 Scripts/configure-signing.py
 swift test
+python3 -m unittest discover -s Tests/SigningTests -p 'test_*.py'
 bash Scripts/build-app.sh
 destination="/Applications/Codex Switch.app"
 if [[ ! -w /Applications ]]; then

@@ -2,6 +2,7 @@
 .swiftpm/
 dist/
 .DS_Store
+__pycache__/
 *.xcuserstate
 xcuserdata/
 # Never publish live account data or OAuth backups.

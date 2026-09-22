@@ -20,11 +20,12 @@ jobs:
       - name: Source safety and shell syntax
         run: |
           python3 Scripts/check-source.py
+          python3 -m unittest discover -s Tests/SigningTests -p 'test_*.py'
           for script in Scripts/*.sh; do bash -n "$script"; done
       - name: Test on macOS (also type-checks native target)
         run: swift test
       - name: Build both Mac architectures
-        run: bash Scripts/build-app.sh --universal
+        run: bash Scripts/build-app.sh --universal --ad-hoc
       - name: Package local-signed app
         run: ditto -c -k --sequesterRsrc --keepParent "dist/Codex Switch.app" dist/Codex-Switch-macOS.zip
       - uses: actions/upload-artifact@v7

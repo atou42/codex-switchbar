@@ -10,12 +10,15 @@ if ! xcrun --find swift >/dev/null 2>&1; then
   exit 1
 fi
 architectures=("$(uname -m)")
-if [[ "${1:-}" == --universal ]]; then
-  architectures=(arm64 x86_64)
-elif [[ $# -gt 0 ]]; then
-  echo 'Usage: bash Scripts/build-app.sh [--universal]' >&2
-  exit 1
-fi
+signing_args=()
+for argument in "$@"; do
+  case "$argument" in
+    --universal) architectures=(arm64 x86_64) ;;
+    --ad-hoc) signing_args+=(--ad-hoc) ;;
+    *) echo 'Usage: bash Scripts/build-app.sh [--universal] [--ad-hoc]' >&2; exit 1 ;;
+  esac
+done
+python3 Scripts/sign-app.py --check ${signing_args[@]+"${signing_args[@]}"}
 app="$PWD/dist/Codex Switch.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 binaries=()
@@ -37,7 +40,5 @@ fi
 cp Resources/Info.plist "$app/Contents/Info.plist"
 swift Scripts/make-icon.swift "$PWD/.build/AppIcon.iconset"
 iconutil --convert icns "$PWD/.build/AppIcon.iconset" --output "$app/Contents/Resources/AppIcon.icns"
-codesign --force --sign - --identifier cc.atou.codex-switchbar.cli "$app/Contents/MacOS/codex-switch"
-codesign --force --sign - --identifier cc.atou.codex-switchbar "$app"
-codesign --verify --strict "$app"
-printf '\nBuilt: %s\nThis local build is ad-hoc signed, not Apple-notarized.\n' "$app"
+python3 Scripts/sign-app.py "$app" ${signing_args[@]+"${signing_args[@]}"}
+printf '\nBuilt: %s\nThis local build is not Apple-notarized.\n' "$app"

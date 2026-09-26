@@ -14,7 +14,7 @@ macOS 13+ / Swift 5.9+ / SwiftUI / no package dependencies / MIT.
 
 Keep one existing `CODEX_HOME`, one config, and the same sessions, skills, and MCP settings. Save accounts in the macOS Keychain and choose the live login from a compact menu. Show remaining short/long quota, actual reset times, and credits/reset counts only when supplied by the official Codex app-server.
 
-The app does not proxy requests, scrape browser cookies, handle API keys, implement OAuth token refresh, start model turns, redeem resets, or automatically rotate accounts. It launches your installed official Codex for browser login and active-account usage reads. Other accounts display timestamped **cached** usage rather than silently rotating their tokens.
+The app does not proxy requests, scrape browser cookies, handle API keys, implement OAuth token refresh, start model turns, redeem resets, or automatically rotate accounts. It launches your installed official Codex for browser login and usage reads. Other accounts display timestamped **cached** usage rather than silently rotating their tokens.
 
 **No unsafe hot swapping.** A running client may retain an in-memory identity. If Codex processes are detected, a requested switch waits until you close them, then expires after five minutes. No user process is killed. The menu shows the shared **file login**, not proof of every running client's identity. No promise of perpetual login validity or zero account-policy risk is made.
 
@@ -122,3 +122,7 @@ The shared Antigravity Keychain item uses the same Apple-signed accessor as offi
 ### Saved weekly reset dates
 
 Each account row shows its cached 7d balance, observation age and local reset date without switching accounts. Antigravity follows the selected quota group. Snapshots survive app restarts. Passed resets are marked as needing refresh; no automatic 100% balance or invented next reset is shown. This is cached observation, not live cross-device synchronization.
+
+### Manual saved-account Codex refresh (experimental)
+
+Use the refresh icon beside a Codex account or `codex-switch usage "name-or-id"`. A working response is pending; inspect `codex-switch status --json` afterward. The active login is untouched. An isolated short-lived official helper receives only a still-valid access token in memory, never a refresh token. Expired saved authorization needs sign-in again. Unsupported experimental protocols, rejected authorization and failed queries preserve the old cache. Antigravity named-account refresh is not supported.

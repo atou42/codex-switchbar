@@ -20,6 +20,7 @@ codex-switch rename "名称或ID" "新名称"
 codex-switch remove "名称或ID"      移除本工具保存的副本，不注销当前登录
 codex-switch cancel                 取消登录或等待中的切换
 codex-switch usage                  发起当前账号的用量刷新
+codex-switch usage "工作"            刷新指定 Codex 账号额度，不切换登录（实验功能）
 
 默认管理 Codex；加 --provider antigravity 管理 Antigravity CLI 账号，例如：
 codex-switch --provider antigravity list
@@ -90,7 +91,7 @@ func run() throws -> Int32 {
         }
         for account in response.accounts {
             print("\(account.active ? "*" : " ") \(account.name)\(account.email.map { "  " + $0 } ?? "")  \(account.id.uuidString)")
-            if command.action == "usage", let usage = account.usage, account.active {
+            if command.action == "usage", command.arguments.isEmpty, let usage = account.usage, account.active {
                 let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                 print(String(decoding: try encoder.encode(usage), as: UTF8.self))
             }

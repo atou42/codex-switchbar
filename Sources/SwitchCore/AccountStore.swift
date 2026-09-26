@@ -249,6 +249,34 @@ public final class AccountStore {
     public func dismissInterruptedOperation() throws {
         try lock.withLock { try canSwitch(); try SecureFile.remove(journalURL) }
     }
+    public func savedUsageCredentials(id: UUID) throws -> Credentials {
+        try lock.withLock {
+            guard try readJournal() == nil else { throw SwitchError.unfinishedTransaction }
+            guard let account = try loadRegistry().accounts.first(where: { $0.id == id }),
+                  let bytes = try vault.read(id: id) else { throw SwitchError.accountNotFound }
+            let credential = try Credentials(data: bytes)
+            guard credential.identity == account.identity else { throw SwitchError.concurrentChange }
+            return credential
+        }
+    }
+
+    /// Independent lookup results belong to the captured saved credential, never the live login.
+    public func storeSavedUsage(_ usage: UsageSnapshot, id: UUID, credential: Credentials, cancellation: CancellationFlag? = nil) throws {
+        try lock.withLock {
+            if cancellation?.isCancelled == true { throw SwitchError.cancelled }
+            guard try readJournal() == nil else { throw SwitchError.unfinishedTransaction }
+            var registry = try loadRegistry()
+            guard let index = registry.accounts.firstIndex(where: { $0.id == id }) else { throw SwitchError.accountNotFound }
+            guard registry.accounts[index].identity == credential.identity,
+                  try vault.read(id: id) == credential.raw else { throw SwitchError.concurrentChange }
+            if let newer = registry.accounts[index].usage, newer.fetchedAt > usage.fetchedAt {
+                throw SwitchError.concurrentChange
+            }
+            registry.accounts[index].usage = usage
+            try writeRegistry(registry)
+        }
+    }
+
     public func storeUsage(_ usage: UsageSnapshot, identity: AccountIdentity) throws {
         try lock.withLock {
             // A slow result must never be attached to the newly selected account.

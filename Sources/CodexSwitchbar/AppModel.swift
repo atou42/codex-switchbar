@@ -49,6 +49,7 @@ final class AppModel: ObservableObject {
     private var shuttingDown = false
     private var lastLocalCheck = Date.distantPast
     private var lastUsageAttempt = Date.distantPast
+    private var savedUsageAttempts: [UUID: Date] = [:]
 
     var chinese: Bool { language == "zh" || (language == "system" && (Locale.preferredLanguages.first ?? "en").hasPrefix("zh")) }
     func text(_ zh: String, _ en: String) -> String { chinese ? zh : en }
@@ -198,6 +199,42 @@ final class AppModel: ObservableObject {
         do { try store?.dismissInterruptedOperation(); refreshLocal() } catch { show(error) }
     }
 
+    func refreshSavedUsage(_ account: SavedAccount) throws {
+        guard !shuttingDown, !isBusy, pending == nil, !hasJournal else { throw ControlError.busy }
+        if account.id == activeID { refreshUsage(manual: true); return }
+        guard let store else { throw SwitchError.fileIO }
+        guard let executable else { throw SwitchError.executableMissing }
+        if let attempt = savedUsageAttempts[account.id], Date().timeIntervalSince(attempt) < 15 {
+            throw ControlError.throttled
+        }
+        let captured = try store.savedUsageCredentials(id: account.id)
+        savedUsageAttempts[account.id] = Date()
+        working = "savedUsage"
+        notify(text("正在查询 \(account.name)，当前登录保持不变。", "Checking \(account.name); your active login stays unchanged."))
+        let flag = CancellationFlag(); cancellation = flag
+        operationTask = Task { [weak self] in
+            let result = await Task.detached(priority: .utility) { () -> Result<UsageSnapshot, Error> in
+                do { return .success(try SavedUsageClient.read(executable: executable, credential: captured, cancellation: flag)) }
+                catch { return .failure(error) }
+            }.value
+            guard let self else { return }
+            self.working = nil; self.cancellation = nil
+            do {
+                let usage = try result.get()
+                try store.storeSavedUsage(usage, id: account.id, credential: captured, cancellation: flag)
+                self.refreshLocal()
+                self.notify(self.text("已刷新 \(account.name)，未切换账号。", "Refreshed \(account.name) without switching accounts."))
+            } catch {
+                if error as? SwitchError != .cancelled {
+                    self.show(error)
+                    self.message = account.name + ": " + (self.message ?? error.localizedDescription)
+                } else {
+                    self.notify(self.text("已取消查询，保留上次缓存。", "Query cancelled; previous cache retained."))
+                }
+            }
+        }
+    }
+
     func refreshUsage(manual: Bool = false) {
         guard !shuttingDown, !isBusy, pending == nil, fileReady, !hasJournal, active != nil, let store else { return }
         let elapsed = Date().timeIntervalSince(lastUsageAttempt)
@@ -325,6 +362,15 @@ final class AppModel: ObservableObject {
     func notify(_ value: String) { message = value; messageIsError = false }
     func show(_ error: Error) {
         messageIsError = true
+        if chinese, let error = error as? SavedUsageError {
+            switch error {
+            case .invalidAccessToken: message = "保存的登录无法用于独立查询，请重新登录并保存。原缓存保持不变。"
+            case .expiredCredentials: message = "保存的登录已过期，请重新登录并保存后再刷新。原缓存保持不变。"
+            case .identityMismatch: message = "查询账号与保存的登录不一致，已停止，未修改缓存。"
+            case .cleanupFailed: message = "查询临时目录未能清理，已停止，未修改缓存。"
+            }
+            return
+        }
         guard chinese, let error = error as? SwitchError else { message = error.localizedDescription; return }
         switch error {
         case .runningClients(let count): message = "检测到 \(count) 个 Codex 进程。请先退出客户端，不会强制中断任务。"

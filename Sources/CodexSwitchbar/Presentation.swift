@@ -233,6 +233,8 @@ struct ManagedAccountRow: View {
     var switchAccount: () -> Void
     var rename: () -> Void
     var remove: () -> Void
+    var refresh: (() -> Void)? = nil
+    var refreshDisabled = false
     var body: some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 5) {
@@ -245,6 +247,9 @@ struct ManagedAccountRow: View {
                     .help(maskEmails ? AccountName.masked(account.email) : account.email ?? "—")
                 SavedWeeklyUsage(usage: usageOverride ?? account.usage, chinese: chinese)
             }.frame(maxWidth: .infinity, alignment: .leading)
+            if let refresh {
+                IconButton(symbol: "arrow.clockwise", label: chinese ? "刷新此账号额度（实验功能，不切换账号）" : "Refresh this account's usage (experimental; no switch)", action: refresh).disabled(refreshDisabled)
+            } else { Color.clear.frame(width: 28, height: 28).accessibilityHidden(true) }
             Group {
                 if active {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(accent)

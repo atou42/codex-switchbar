@@ -19,17 +19,26 @@ public final class AppServerClient {
     public var pid: Int32 { process.processIdentifier }
 
     public init(executable: URL, home: URL, cancellation: CancellationFlag = CancellationFlag(),
-                extraEnvironment: [String: String] = [:]) throws {
+                extraEnvironment: [String: String] = [:], isolatedExternalAuth: Bool = false) throws {
         self.cancellation = cancellation
         process = Process(); input = Pipe(); output = Pipe()
         process.executableURL = executable
         process.arguments = ["-s", "read-only", "-a", "never", "app-server"]
+        if isolatedExternalAuth {
+            process.arguments = ["-s", "read-only", "-a", "never", "-c",
+                                 "cli_auth_credentials_store=\"ephemeral\"", "app-server"]
+        }
         process.currentDirectoryURL = home
-        var env = ProcessInfo.processInfo.environment
+        var env = isolatedExternalAuth ? ["HOME": home.path, "TMPDIR": home.path,
+                                         "LANG": "en_US.UTF-8"] : ProcessInfo.processInfo.environment
         env["CODEX_HOME"] = home.path
         env["PATH"] = executable.deletingLastPathComponent().path + ":" + (env["PATH"] ?? "") + ":/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
         env["NO_COLOR"] = "1"
-        for (key, value) in extraEnvironment { env[key] = value }
+        // External-token reads never inherit API keys, endpoint overrides, config,
+        // or caller environment overrides. The supplied executable remains explicit.
+        if !isolatedExternalAuth {
+            for (key, value) in extraEnvironment { env[key] = value }
+        }
         process.environment = env
         process.standardInput = input; process.standardOutput = output
         process.standardError = FileHandle.nullDevice // never collect raw authentication output
@@ -56,10 +65,10 @@ public final class AppServerClient {
         do { try input.fileHandleForWriting.write(contentsOf: data) }
         catch { throw SwitchError.processFailed }
     }
-    public func initialize(timeout: TimeInterval = 20) throws {
+    public func initialize(timeout: TimeInterval = 20, experimental: Bool = false) throws {
         _ = try request("initialize", params: [
             "clientInfo": ["name": "codex_switchbar", "title": "Codex Switch", "version": "0.1.0"],
-            "capabilities": ["experimentalApi": false]
+            "capabilities": ["experimentalApi": experimental]
         ], timeout: timeout)
         try send(["method": "initialized"])
     }

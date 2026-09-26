@@ -14,7 +14,7 @@ struct MenuPanel: View {
                 Image(systemName: "arrow.left.arrow.right").font(.system(size: 13, weight: .semibold))
                 Text("Codex Switch").font(.system(size: 13, weight: .semibold))
                 Spacer()
-                if model.provider == .codex && model.working == "usage" {
+                if model.provider == .codex && (model.working == "usage" || model.working == "savedUsage") {
                     ProgressView().controlSize(.small).frame(width: 28, height: 28)
                 } else if model.provider == .codex {
                     IconButton(symbol: "arrow.clockwise", label: model.text("刷新当前账号用量", "Refresh active account usage")) {
@@ -81,7 +81,9 @@ struct MenuPanel: View {
                 ScrollView {
                     VStack(spacing: 3) {
                         ForEach(model.accounts) { account in
-                            AccountRow(account: account, usage: account.usage, active: model.activeID == account.id, queued: model.pending?.id == account.id, chinese: model.chinese, maskEmails: model.maskEmails, disabled: model.isLogin || model.hasJournal) { model.requestSwitch(account) }
+                            AccountRow(account: account, usage: account.usage, active: model.activeID == account.id, queued: model.pending?.id == account.id, chinese: model.chinese, maskEmails: model.maskEmails, disabled: model.isLogin || model.hasJournal,
+                                refresh: { do { try model.refreshSavedUsage(account) } catch { model.show(error) } },
+                                refreshDisabled: model.isBusy || model.hasJournal || model.pending != nil) { model.requestSwitch(account) }
                         }
                     }
                 }
@@ -267,6 +269,8 @@ struct AccountRow: View {
     var chinese: Bool
     var maskEmails: Bool
     var disabled: Bool
+    var refresh: (() -> Void)? = nil
+    var refreshDisabled = false
     private func text(_ zh: String, _ en: String) -> String { chinese ? zh : en }
     var action: () -> Void
     @State private var hovering = false
@@ -278,6 +282,7 @@ struct AccountRow: View {
         return "\(UsagePresentation.percent(usage.main?.primary)) / \(UsagePresentation.percent(usage.main?.secondary))"
     }
     var body: some View {
+        HStack(spacing: 0) {
         Button(action: action) {
             HStack(spacing: 10) {
                 Text(String(account.name.prefix(1)).uppercased())
@@ -311,6 +316,10 @@ struct AccountRow: View {
         .onHover { hovering = $0 }
         .help((maskEmails ? AccountName.masked(account.email) : account.email ?? account.name) + " · " + (antigravity ? "Antigravity" : (account.plan ?? "ChatGPT")))
         .accessibilityLabel(text("切换至 \(account.name)", "Switch to \(account.name)"))
+        if let refresh {
+            IconButton(symbol: "arrow.clockwise", label: text("刷新此账号额度（实验功能，不切换账号）", "Refresh this account's usage (experimental; no switch)"), action: refresh).disabled(refreshDisabled)
+        } else { Color.clear.frame(width: 28, height: 28).accessibilityHidden(true) }
+        }
     }
 }
 #endif

@@ -138,7 +138,9 @@ struct SettingsPanel: View {
                             switchDisabled: model.isLogin || model.hasJournal, removeDisabled: model.isBusy,
                             switchAccount: { model.requestSwitch(account) },
                             rename: { renamed = account.name; renaming = account },
-                            remove: { deleting = account })
+                            remove: { deleting = account },
+                            refresh: { do { try model.refreshSavedUsage(account) } catch { model.show(error) } },
+                            refreshDisabled: model.isBusy || model.hasJournal || model.pending != nil)
                         Divider().opacity(0.5)
                     }
                 }
@@ -222,7 +224,7 @@ struct SettingsPanel: View {
         VStack(alignment: .leading, spacing: 9) {
             Label(model.text("只切换身份，不接管你的工作", "Switch the login, not your workflow"), systemImage: "lock.shield")
                 .font(.system(size: 12, weight: .semibold))
-            Text(model.text("不会代理请求、自动轮转账号、消耗重置次数或自行刷新 OAuth。登录与用量读取交给官方 Codex；非当前账号只显示带时间的缓存。", "No proxy, account rotation, reset-credit redemption, or custom OAuth refresh. The official Codex handles login and usage. Other accounts show timestamped cached usage."))
+            Text(model.text("账号旁的刷新按钮可单独查询额度（实验功能），不切换当前登录。保存的登录过期时需重新登录，查询失败会保留缓存。不会后台轮换账号或替其他设备续期。", "Refresh beside an account checks its usage without switching (experimental). Expired saved authorization requires sign-in again; failed checks retain cached data. No background account rotation or token renewal for other devices."))
                 .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Text(model.text("菜单栏显示的是共享文件中的账号，不代表每个已运行客户端的内存身份。共享历史也不等于工作与个人数据隔离。", "The menu bar shows the shared file's login, not every running client's in-memory identity. Shared history does not isolate work and personal data."))
                 .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)

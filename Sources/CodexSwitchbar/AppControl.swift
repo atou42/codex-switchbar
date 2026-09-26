@@ -38,9 +38,13 @@ extension AppDelegate {
                 let target = try ControlCommand.account(args[0], in: store.loadRegistry().accounts)
                 try store.forget(id: target.id)
             case "usage":
-                try store.requireFileMode()
-                guard model.active != nil else { throw SwitchError.accountNotFound }
-                model.refreshUsage(manual: true)
+                if let selector = args.first {
+                    try model.refreshSavedUsage(ControlCommand.account(selector, in: store.loadRegistry().accounts))
+                } else {
+                    try store.requireFileMode()
+                    guard model.active != nil else { throw SwitchError.accountNotFound }
+                    model.refreshUsage(manual: true)
+                }
             default: throw ControlError.usage
             }
             model.refreshLocal()

@@ -68,3 +68,7 @@ Antigravity login deliberately uses the official interactive CLI in Terminal. Th
 ### Antigravity usage and compact label
 
 `AntigravityUsageClient` gates the official read-only print report by version, bounds the subprocess and strictly validates the zero-turn result. `AntigravityStore.storeUsage` verifies live identity before updating metadata. A cancellable background task keeps the UI responsive, throttles manual reads to 15 seconds and automatic reads to five minutes, and prevents same-provider mutations during a read. Inactive accounts retain dated caches. The selected Gemini or Other models (Claude and GPT-OSS) quota group is a local display preference. Two menu-bar rows independently expire at the 5h and weekly reset times, without inventing a full balance.
+
+## Explicit saved-account Codex usage
+
+`SavedUsageClient` creates a private disposable worker home and uses experimental external-token login with ephemeral storage. `AccountStore.savedUsageCredentials` verifies the saved identity; `storeSavedUsage` binds results to the exact captured credential and account ID, rejects stale or changed records, and writes only the registry usage. The normal active-account path retains its live-identity gate. The UI serializes requests with other Codex operations and throttles manual lookups per account to 15 seconds. `usage NAME_OR_ID` selects this path; no selector retains active-account behavior. No permanent account workspace or refresh-token worker is created.

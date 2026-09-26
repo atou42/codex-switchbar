@@ -22,9 +22,10 @@ public struct ControlCommand: Codable, Equatable {
         var counts: [String: ClosedRange<Int>] = [
             "start": 0...0, "stop": 0...0, "status": 0...0, "list": 0...0,
             "setup": 0...0, "save": 0...1, "add": 1...2, "switch": 1...1,
-            "rename": 2...2, "remove": 1...1, "cancel": 0...0, "usage": 0...0
+            "rename": 2...2, "remove": 1...1, "cancel": 0...0, "usage": 0...1
         ]
         if provider == .antigravity {
+            counts["usage"] = 0...0
             counts["finish"] = 0...0
             counts["recover"] = 0...0
             counts["launch"] = 0...0
@@ -54,12 +55,13 @@ public struct ControlCommand: Codable, Equatable {
 }
 
 public enum ControlError: Error, LocalizedError {
-    case usage, ambiguous, busy
+    case usage, ambiguous, busy, throttled
     public var errorDescription: String? {
         switch self {
         case .usage: return "命令或参数不正确。运行 codex-switch --help 查看用法。"
         case .ambiguous: return "存在同名账号，请用 list 显示的账号 ID。"
         case .busy: return "操作正在进行，请等待完成或先运行 codex-switch cancel。"
+        case .throttled: return "刚刚查询过这个账号，请间隔 15 秒后再试。"
         }
     }
 }

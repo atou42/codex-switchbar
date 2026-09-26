@@ -4,13 +4,13 @@
 
 Account rows display the persisted 7-day observation and reset timestamp without switching. Cache age is explicit; a passed reset never implies a new 100% balance. No background account rotation or cross-device synchronization was added.
 
-## Codex candidate, not enabled
+## Codex manual refresh (experimental)
 
 The official account/rateLimits/read request has no target-account selector. The experimental chatgptAuthTokens login can establish an independent helper identity using an access token only. Current official source describes memory-only external tokens but also marks the interface unstable/internal; compatibility must be handled explicitly.
 
 A local synthetic probe using Codex 0.155.0 accepted experimental initialization and external-token login. It ran in a disposable worker directory with cli_auth_credentials_store="ephemeral". A sentinel auth.json remained byte-for-byte unchanged, and a recursive scan found no saved copy of the synthetic access token. No real credentials, Keychain items, or quota requests were used. This proves local protocol acceptance and file isolation, not live quota success.
 
-Any implementation should use a short-lived isolated helper, never supply refresh tokens, never swap shared authentication, validate the selected saved identity before updating its cache, preserve old observations on failure, and report expired authorization clearly. Temporary worker metadata needs cleanup. This is not a permanent per-account Codex workspace. Availability must be tested against the installed CLI rather than assumed from a version string alone.
+The implementation uses a short-lived isolated helper, never supplies refresh tokens, never swaps shared authentication, validates the selected saved identity before updating its cache, preserves old observations on failure, and reports expired authorization clearly. Temporary worker metadata is removed after process shutdown. This is not a permanent per-account Codex workspace. Availability must be tested against the installed CLI rather than assumed from a version string alone.
 
 Valid server queries can observe usage incurred on other devices; locally cached observations cannot. Copied refresh-token lineages are unsafe to rotate independently across devices, so this design deliberately does not refresh them.
 
@@ -24,3 +24,7 @@ Inspected official CLI help and documentation do not expose a target-account or 
 - [Official external-token auth implementation](https://github.com/openai/codex/blob/main/codex-rs/login/src/auth/manager.rs)
 - [Official protocol definitions](https://github.com/openai/codex/blob/main/codex-rs/app-server-protocol/src/protocol/common.rs)
 - [Antigravity CLI reference](https://antigravity.google/docs/cli/reference/)
+
+## Implemented and live-verified
+
+The manual path is now connected through the menu, settings and named `usage` command. A real inactive-account request succeeded after installation: its cache updated while the active identity, live auth.json and config.toml remained unchanged. It does not perform background monitoring or refresh expired login tokens. See the dated validation record for test coverage and limits.

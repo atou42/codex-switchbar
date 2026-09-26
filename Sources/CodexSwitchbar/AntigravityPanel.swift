@@ -30,6 +30,7 @@ struct AntigravityPanel: View {
                         ForEach(model.accounts) { account in
                             ManagedAccountRow(account: account, active: model.activeID == account.id,
                                 chinese: chinese, maskEmails: maskEmails,
+                                usageOverride: account.usage.map { UsageSnapshot(fetchedAt: $0.fetchedAt, buckets: $0.buckets.filter { $0.id == model.usageGroupID }) },
                                 switchDisabled: model.loginPending || model.hasJournal || model.refreshingUsage,
                                 renameDisabled: model.loginPending || model.hasJournal,
                                 removeDisabled: model.loginPending || model.hasJournal,
@@ -181,7 +182,7 @@ struct AntigravityMenuContent: View {
                             }
                         }
                     }
-                }.frame(height: 171)
+                }.frame(height: 267)
             }
         }.onAppear { model.refresh(); model.refreshUsage() }
     }

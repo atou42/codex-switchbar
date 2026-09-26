@@ -118,3 +118,7 @@ Use `codex-switch --provider antigravity` with `list`, `status`, `save [name]`, 
 Authentication copies stay in a separate Keychain service; metadata and token-free journals live under the app's `antigravity` support directory. Settings, conversations, and HOME are not cloned or rewritten. Partial native-storage updates retain a recovery marker and never automatically replay a stale backup. See [research and compatibility limits](docs/ANTIGRAVITY-RESEARCH.md) and [validation](docs/VALIDATION.md). A real two-account Google login/switch cycle remains a separate manual acceptance step.
 
 The shared Antigravity Keychain item uses the same Apple-signed accessor as official agy, avoiding repeated cross-application permission requests when each login creates a new item. Private saved copies use the pinned app signing identity described above. No ACLs are broadened. Locked Keychains, one-time grants, old private account copies, and signing-identity changes can still require macOS approval.
+
+### Saved weekly reset dates
+
+Each account row shows its cached 7d balance, observation age and local reset date without switching accounts. Antigravity follows the selected quota group. Snapshots survive app restarts. Passed resets are marked as needing refresh; no automatic 100% balance or invented next reset is shown. This is cached observation, not live cross-device synchronization.

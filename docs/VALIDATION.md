@@ -153,3 +153,10 @@ System menu-bar pixel capture was not available from the app-window automation s
 - Nine configuration tests passed. They initially caught non-regular-file handling; directory, FIFO, symlink, foreign-owner, writable, malformed and ambiguous configurations now fail without rewriting them. All 109 Swift tests passed, source scan passed, and the native release app and CLI signatures verified.
 - Installed at `/Applications/Codex Switch.app` and reopened the real settings window. Local control confirmed both Codex accounts and all three Antigravity accounts remain present, with both active identities unchanged. No live account switch or OAuth login was performed.
 - Existing items authorized for an old ad-hoc build may still require a one-time **Always Allow** approval per account. That migration was not performed automatically. Locked Keychains, one-time grants and future signing-identity changes remain outside the no-repeat-prompt guarantee. The local app is not notarized.
+
+## 2026-09-26 — Saved-account weekly reset visibility
+
+- Both provider account lists now show cached 7d remaining quota, cache age and local reset date/time without switching accounts. Seven-day windows are selected by their actual 10080-minute duration, whether primary or secondary. Antigravity uses the currently selected quota group.
+- Past reset dates remain visible with a refresh-needed label; cached percentages are not promoted to 100%, reset dates are not advanced, missing data remains explicit, and conflicting weekly windows are labelled as a conflict.
+- Added four tests covering persisted snapshots, old caches, expiry, missing/ambiguous durations and equal account-row heights in both languages. The initial test failed because the presentation was absent; all 113 Swift tests passed after implementation. Native signed build and installed signature verification passed.
+- Inspected the installed Codex account list visually: both saved accounts display distinct weekly reset dates and cache ages. No account switch, external-token login or inactive-account usage refresh was performed. The feature displays stored observations, not cross-device live monitoring.

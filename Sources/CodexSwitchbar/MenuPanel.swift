@@ -85,7 +85,7 @@ struct MenuPanel: View {
                         }
                     }
                 }
-                .frame(height: 171)
+                .frame(height: 267)
             }
             }
                 }.frame(maxWidth: .infinity, alignment: .leading)
@@ -291,19 +291,18 @@ struct AccountRow: View {
                         if active { Text(text("当前", "Active")).font(.system(size: 9)).foregroundStyle(accent) }
                     }
                     if let usage {
-                        Text(quotaPair(usage) + " · " +
-                             (active ? (antigravity ? "5H / Weekly" : text("短 / 长周期", "short / long")) : text("缓存 · \(UsagePresentation.age(usage.fetchedAt, chinese: true))", "cached · \(UsagePresentation.age(usage.fetchedAt, chinese: false))")))
-                            .font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
+                        Text(quotaPair(usage)).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
                     } else {
-                        Text(text("用量待查询", "Usage not checked yet")).font(.system(size: 9)).foregroundStyle(.secondary)
+                        Text("— / —").font(.system(size: 9)).foregroundStyle(.secondary)
                     }
+                    SavedWeeklyUsage(usage: usage, chinese: chinese)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: queued ? "clock" : (active ? "checkmark.circle.fill" : "arrow.right"))
                     .font(.system(size: active ? 15 : 11))
                     .foregroundStyle(queued ? Color.orange : (active ? accent : Color.secondary.opacity(hovering ? 1 : 0.35)))
             }
-            .padding(.horizontal, 10).padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10).frame(maxWidth: .infinity, alignment: .leading).frame(height: 88)
             .background(active ? accent.opacity(0.045) : (hovering ? Appearance.softFill : .clear))
             .clipShape(RoundedRectangle(cornerRadius: 11))
             .contentShape(Rectangle())

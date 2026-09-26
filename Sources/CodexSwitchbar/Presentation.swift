@@ -80,6 +80,24 @@ enum AntigravityMark {
 }
 
 enum UsagePresentation {
+    static func savedWeekly(_ usage: UsageSnapshot?, now: Date, chinese: Bool) -> (quota: String, reset: String) {
+        let missingReset = chinese ? "7d 重置时间未提供" : "7d reset time not provided"
+        guard let usage else { return (chinese ? "7d · 尚未查询" : "7d · Not checked yet", missingReset) }
+        let windows = [usage.main?.primary, usage.main?.secondary].compactMap { $0 }
+            .filter { $0.windowDurationMins == 10080 }
+        guard windows.count <= 1 else {
+            return (chinese ? "7d 数据冲突" : "Conflicting 7d data", chinese ? "请刷新后核对" : "Refresh to verify")
+        }
+        let window = windows.first
+        let quota = "7d · \(percent(window)) · " + (chinese ? "缓存 · " : "cached · ") + age(usage.fetchedAt, now: now, chinese: chinese)
+        guard let timestamp = window?.validResetTimestamp else { return (quota, missingReset) }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: chinese ? "zh_CN" : "en_US_POSIX")
+        formatter.dateFormat = "MM/dd HH:mm"
+        let date = formatter.string(from: Date(timeIntervalSince1970: timestamp))
+        let suffix = window?.resetIsPast(at: now) == true ? (chinese ? " · 待刷新" : " · Refresh needed") : ""
+        return (quota, (chinese ? "7d 重置 " : "7d resets ") + date + suffix)
+    }
     static func percent(_ window: UsageWindow?) -> String {
         window?.remaining.map { "\(Int($0.rounded()))%" } ?? "—"
     }
@@ -197,7 +215,7 @@ struct SavedAccountList<Content: View>: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) { content }.frame(maxWidth: .infinity, alignment: .leading)
-        }.frame(height: 171)
+        }.frame(height: 267)
     }
 }
 
@@ -207,6 +225,7 @@ struct ManagedAccountRow: View {
     var active: Bool
     var chinese: Bool
     var maskEmails: Bool
+    var usageOverride: UsageSnapshot? = nil
     var queued = false
     var switchDisabled: Bool
     var renameDisabled = false
@@ -224,6 +243,7 @@ struct ManagedAccountRow: View {
                 Text(maskEmails ? AccountName.masked(account.email) : account.email ?? "—")
                     .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
                     .help(maskEmails ? AccountName.masked(account.email) : account.email ?? "—")
+                SavedWeeklyUsage(usage: usageOverride ?? account.usage, chinese: chinese)
             }.frame(maxWidth: .infinity, alignment: .leading)
             Group {
                 if active {
@@ -235,7 +255,24 @@ struct ManagedAccountRow: View {
             }.frame(width: 56)
             IconButton(symbol: "pencil", label: chinese ? "改名" : "Rename", action: rename).disabled(renameDisabled)
             IconButton(symbol: "trash", label: chinese ? "移除副本" : "Remove saved copy", action: remove).disabled(removeDisabled)
-        }.frame(height: 56)
+        }.frame(height: 88)
+    }
+}
+
+struct SavedWeeklyUsage: View {
+    var usage: UsageSnapshot?
+    var chinese: Bool
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            let summary = UsagePresentation.savedWeekly(usage, now: context.date, chinese: chinese)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(summary.quota)
+                Text(summary.reset)
+            }.font(.system(size: 9)).foregroundStyle(.secondary)
+                .lineLimit(1).frame(height: 26, alignment: .leading)
+                .help(summary.quota + "\n" + summary.reset)
+                .accessibilityElement(children: .combine)
+        }
     }
 }
 
